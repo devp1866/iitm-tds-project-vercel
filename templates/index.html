@@ -8,136 +8,148 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        font-family: 'Inter', sans-serif;
-        background-color: #0f172a;
-        color: #e2e8f0;
-        overflow-x: hidden;
-        }
+        <title>Autolysis | Intelligent Data Analysis</title>
+        <meta name="description"
+            content="Autolysis: Intelligent automated data analysis tool. Upload CSVs and get instant insights, visualizations, and reports.">
+        <meta name="keywords"
+            content="data analysis, AI, machine learning, visualization, automated reporting, CSV analysis">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #0f172a;
+                color: #e2e8f0;
+                overflow-x: hidden;
+            }
 
-        .glass {
-        background: rgba(30, 41, 59, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        }
+            .glass {
+                background: rgba(30, 41, 59, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
 
-        .gradient-text {
-        background: linear-gradient(to right, #38bdf8, #818cf8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        }
+            .gradient-text {
+                background: linear-gradient(to right, #38bdf8, #818cf8);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
 
-        .loader {
-        border: 4px solid rgba(255, 255, 255, 0.1);
-        border-left-color: #38bdf8;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        }
+            .loader {
+                border: 4px solid rgba(255, 255, 255, 0.1);
+                border-left-color: #38bdf8;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+            }
 
-        @keyframes spin {
-        0% {
-        transform: rotate(0deg);
-        }
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
 
-        100% {
-        transform: rotate(360deg);
-        }
-        }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
 
-        .markdown-body h1 {
-        font-size: 2em;
-        font-weight: bold;
-        margin-bottom: 0.5em;
-        color: #f8fafc;
-        }
+            .markdown-body h1 {
+                font-size: 2em;
+                font-weight: bold;
+                margin-bottom: 0.5em;
+                color: #f8fafc;
+            }
 
-        .markdown-body h2 {
-        font-size: 1.5em;
-        font-weight: bold;
-        margin-top: 1em;
-        margin-bottom: 0.5em;
-        color: #f1f5f9;
-        border-bottom: 1px solid #334155;
-        padding-bottom: 0.3em;
-        }
+            .markdown-body h2 {
+                font-size: 1.5em;
+                font-weight: bold;
+                margin-top: 1em;
+                margin-bottom: 0.5em;
+                color: #f1f5f9;
+                border-bottom: 1px solid #334155;
+                padding-bottom: 0.3em;
+            }
 
-        .markdown-body h3 {
-        font-size: 1.25em;
-        font-weight: bold;
-        margin-top: 1em;
-        margin-bottom: 0.5em;
-        color: #e2e8f0;
-        }
+            .markdown-body h3 {
+                font-size: 1.25em;
+                font-weight: bold;
+                margin-top: 1em;
+                margin-bottom: 0.5em;
+                color: #e2e8f0;
+            }
 
-        .markdown-body p {
-        margin-bottom: 1em;
-        line-height: 1.6;
-        color: #cbd5e1;
-        }
+            .markdown-body p {
+                margin-bottom: 1em;
+                line-height: 1.6;
+                color: #cbd5e1;
+            }
 
-        .markdown-body ul {
-        list-style-type: disc;
-        padding-left: 1.5em;
-        margin-bottom: 1em;
-        }
+            .markdown-body ul {
+                list-style-type: disc;
+                padding-left: 1.5em;
+                margin-bottom: 1em;
+            }
 
-        .markdown-body li {
-        margin-bottom: 0.5em;
-        }
+            .markdown-body li {
+                margin-bottom: 0.5em;
+            }
 
-        .markdown-body strong {
-        color: #38bdf8;
-        font-weight: 600;
-        }
+            .markdown-body strong {
+                color: #38bdf8;
+                font-weight: 600;
+            }
 
-        .markdown-body code {
-        background: #1e293b;
-        padding: 0.2em 0.4em;
-        border-radius: 0.3em;
-        font-family: monospace;
-        color: #f472b6;
-        }
+            .markdown-body code {
+                background: #1e293b;
+                padding: 0.2em 0.4em;
+                border-radius: 0.3em;
+                font-family: monospace;
+                color: #f472b6;
+            }
 
-        .markdown-body table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 1em;
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-        }
+            .markdown-body table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 1em;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
 
-        .markdown-body th,
-        .markdown-body td {
-        border: 1px solid #334155;
-        padding: 0.5em;
-        text-align: left;
-        }
+            .markdown-body th,
+            .markdown-body td {
+                border: 1px solid #334155;
+                padding: 0.5em;
+                text-align: left;
+            }
 
-        .markdown-body th {
-        background: #1e293b;
-        color: #f8fafc;
-        }
+            .markdown-body th {
+                background: #1e293b;
+                color: #f8fafc;
+            }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-        width: 8px;
-        }
+            /* Custom Scrollbar */
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
 
-        ::-webkit-scrollbar-track {
-        background: #0f172a;
-        }
+            ::-webkit-scrollbar-track {
+                background: #0f172a;
+            }
 
-        ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 4px;
-        }
+            ::-webkit-scrollbar-thumb {
+                background: #334155;
+                border-radius: 4px;
+            }
 
-        ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
-        }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #475569;
+            }
         </style>
     </head>
 
