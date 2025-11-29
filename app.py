@@ -1,0 +1,163 @@
+import os
+import sys
+import shutil
+import uuid
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    send_file,
+)
+from werkzeug.utils import secure_filename
+import autolysis
+import markdown
+from xhtml2pdf import pisa
+import io
+import base64
+
+app = Flask(__name__)
+# Use /tmp for Vercel compatibility (ephemeral storage)
+app.config["UPLOAD_FOLDER"] = "/tmp"
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+
+def convert_html_to_pdf_base64(source_html):
+    result_file = io.BytesIO()
+    pisa_status = pisa.CreatePDF(source_html, dest=result_file)
+    if pisa_status.err:
+        return None
+    result_file.seek(0)
+    pdf_base64 = base64.b64encode(result_file.read()).decode("utf-8")
+    return f"data:application/pdf;base64,{pdf_base64}"
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/contact", methods=["POST"])
+def contact():
+    name = request.form.get("name")
+    email = request.form.get("email")
+    message = request.form.get("message")
+
+    if not name or not email or not message:
+        return render_template("about.html", error="All fields are required.")
+
+    # Simulate sending email by logging to a file (optional, might not persist on Vercel)
+    print(
+        f"New Contact Form Submission - Name: {name}, Email: {email}, Message: {message}"
+    )
+    return render_template("about.html", success=True)
+
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    if file:
+        try:
+            # Save to /tmp temporarily
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(file_path)
+
+            # Run autolysis (Stateless)
+            readme_content, images = autolysis.generate_(file_path)
+
+            # Clean up input file immediately
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+            if not readme_content:
+                return jsonify({"error": "Analysis failed to produce results"}), 500
+
+            # Generate PDF in memory
+            html_content = markdown.markdown(readme_content, extensions=["tables"])
+
+            # Embed Base64 images in HTML for PDF
+            html_images = ""
+            if images:
+                for img_name, img_base64 in images.items():
+                    html_images += f'<div style="text-align:center; margin-top: 20px;"><img src="{img_base64}" style="max-width: 100%; height: auto;"><br><i>{img_name}</i></div>'
+
+            full_html = f"""
+            <html>
+            <head>
+                <style>
+                    @page {{
+                        size: A4;
+                        margin: 2cm;
+                    }}
+                    body {{ font-family: Helvetica, sans-serif; font-size: 11px; line-height: 1.4; color: #333; }}
+                    h1 {{ color: #2c3e50; font-size: 24px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px; }}
+                    h2 {{ color: #2c3e50; font-size: 18px; margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px; }}
+                    h3 {{ color: #34495e; font-size: 14px; margin-top: 20px; font-weight: bold; }}
+                    p {{ margin-bottom: 10px; text-align: justify; }}
+                    
+                    /* Table Styling */
+                    table {{ 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-bottom: 20px; 
+                        table-layout: fixed; 
+                        word-wrap: break-word; 
+                    }}
+                    th, td {{ 
+                        border: 1px solid #ddd; 
+                        padding: 6px; 
+                        text-align: left; 
+                        font-size: 10px; 
+                        vertical-align: top;
+                    }}
+                    th {{ background-color: #f8f9fa; font-weight: bold; color: #2c3e50; }}
+                    tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                    
+                    code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 10px; }}
+                    ul {{ margin-bottom: 10px; padding-left: 20px; }}
+                    li {{ margin-bottom: 4px; }}
+                    
+                    /* Images */
+                    img {{ max-width: 100%; height: auto; margin: 10px 0; }}
+                </style>
+            </head>
+            <body>
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <h1 style="border: none; margin-bottom: 10px;">Automated Analysis Report</h1>
+                    <p style="color: #666; font-size: 12px;">Generated by Autolysis AI</p>
+                </div>
+                {html_content}
+                <h2>Visualizations</h2>
+                {html_images}
+            </body>
+            </html>
+            """
+
+            pdf_base64 = convert_html_to_pdf_base64(full_html)
+
+            # Return everything to client
+            return jsonify(
+                {
+                    "readme": readme_content,
+                    "images": list(images.values()) if images else [],
+                    "pdf": pdf_base64,
+                }
+            )
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
