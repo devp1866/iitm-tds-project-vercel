@@ -2,149 +2,156 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autolysis | Intelligent Data Analysis</title>
-    <meta name="description" content="Autolysis: Intelligent automated data analysis tool. Upload CSVs and get instant insights, visualizations, and reports.">
-    <meta name="keywords" content="data analysis, AI, machine learning, visualization, automated reporting, CSV analysis">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #e2e8f0;
-            overflow-x: hidden;
-        }
+    <!DOCTYPE html>
+    <html lang="en">
 
-        .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .gradient-text {
-            background: linear-gradient(to right, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .loader {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-left-color: #38bdf8;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Autolysis | Intelligent Data Analysis</title>
+        <meta name="description"
+            content="Autolysis: Intelligent automated data analysis tool. Upload CSVs and get instant insights, visualizations, and reports.">
+        <meta name="keywords"
+            content="data analysis, AI, machine learning, visualization, automated reporting, CSV analysis">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #0f172a;
+                color: #e2e8f0;
+                overflow-x: hidden;
             }
 
-            100% {
-                transform: rotate(360deg);
+            .glass {
+                background: rgba(30, 41, 59, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
             }
-        }
 
-        .markdown-body h1 {
-            font-size: 2em;
-            font-weight: bold;
-            margin-bottom: 0.5em;
-            color: #f8fafc;
-        }
+            .gradient-text {
+                background: linear-gradient(to right, #38bdf8, #818cf8);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
 
-        .markdown-body h2 {
-            font-size: 1.5em;
-            font-weight: bold;
-            margin-top: 1em;
-            margin-bottom: 0.5em;
-            color: #f1f5f9;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 0.3em;
-        }
+            .loader {
+                border: 4px solid rgba(255, 255, 255, 0.1);
+                border-left-color: #38bdf8;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+            }
 
-        .markdown-body h3 {
-            font-size: 1.25em;
-            font-weight: bold;
-            margin-top: 1em;
-            margin-bottom: 0.5em;
-            color: #e2e8f0;
-        }
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
 
-        .markdown-body p {
-            margin-bottom: 1em;
-            line-height: 1.6;
-            color: #cbd5e1;
-        }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
 
-        .markdown-body ul {
-            list-style-type: disc;
-            padding-left: 1.5em;
-            margin-bottom: 1em;
-        }
+            .markdown-body h1 {
+                font-size: 2em;
+                font-weight: bold;
+                margin-bottom: 0.5em;
+                color: #f8fafc;
+            }
 
-        .markdown-body li {
-            margin-bottom: 0.5em;
-        }
+            .markdown-body h2 {
+                font-size: 1.5em;
+                font-weight: bold;
+                margin-top: 1em;
+                margin-bottom: 0.5em;
+                color: #f1f5f9;
+                border-bottom: 1px solid #334155;
+                padding-bottom: 0.3em;
+            }
 
-        .markdown-body strong {
-            color: #38bdf8;
-            font-weight: 600;
-        }
+            .markdown-body h3 {
+                font-size: 1.25em;
+                font-weight: bold;
+                margin-top: 1em;
+                margin-bottom: 0.5em;
+                color: #e2e8f0;
+            }
 
-        .markdown-body code {
-            background: #1e293b;
-            padding: 0.2em 0.4em;
-            border-radius: 0.3em;
-            font-family: monospace;
-            color: #f472b6;
-        }
+            .markdown-body p {
+                margin-bottom: 1em;
+                line-height: 1.6;
+                color: #cbd5e1;
+            }
 
-        .markdown-body table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 1em;
-            display: block;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
+            .markdown-body ul {
+                list-style-type: disc;
+                padding-left: 1.5em;
+                margin-bottom: 1em;
+            }
 
-        .markdown-body th,
-        .markdown-body td {
-            border: 1px solid #334155;
-            padding: 0.5em;
-            text-align: left;
-        }
+            .markdown-body li {
+                margin-bottom: 0.5em;
+            }
 
-        .markdown-body th {
-            background: #1e293b;
-            color: #f8fafc;
-        }
+            .markdown-body strong {
+                color: #38bdf8;
+                font-weight: 600;
+            }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
+            .markdown-body code {
+                background: #1e293b;
+                padding: 0.2em 0.4em;
+                border-radius: 0.3em;
+                font-family: monospace;
+                color: #f472b6;
+            }
 
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
+            .markdown-body table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 1em;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
 
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
+            .markdown-body th,
+            .markdown-body td {
+                border: 1px solid #334155;
+                padding: 0.5em;
+                text-align: left;
+            }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
-        }
-    </style>
-</head>
+            .markdown-body th {
+                background: #1e293b;
+                color: #f8fafc;
+            }
+
+            /* Custom Scrollbar */
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            ::-webkit-scrollbar-track {
+                background: #0f172a;
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: #334155;
+                border-radius: 4px;
+            }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #475569;
+            }
+        </style>
+    </head>
 
 <body class="min-h-screen flex flex-col">
 
@@ -282,7 +289,7 @@
         const imageGallery = document.getElementById('image-gallery');
         const downloadBtn = document.getElementById('download-btn');
 
-        let currentPdfBase64 = null;
+        let currentPdfHtml = null;
 
         // Check for existing session on load (Client-side only)
         const savedData = localStorage.getItem('analysisData');
@@ -382,7 +389,7 @@
                 return;
             }
 
-            currentPdfBase64 = data.pdf;
+            currentPdfHtml = data.pdf_html;
 
             // Render Report
             if (data.readme) {
@@ -435,15 +442,24 @@
         }
 
         downloadBtn.addEventListener('click', () => {
-            if (currentPdfBase64) {
-                const link = document.createElement('a');
-                link.href = currentPdfBase64;
-                link.download = 'analysis_report.pdf';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            if (currentPdfHtml) {
+                // Create a temporary container for the PDF content
+                const element = document.createElement('div');
+                element.innerHTML = currentPdfHtml;
+
+                // Configure html2pdf options
+                const opt = {
+                    margin: 10,
+                    filename: 'analysis_report.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                // Generate PDF
+                html2pdf().set(opt).from(element).save();
             } else {
-                alert('PDF not available.');
+                alert('PDF content not available.');
             }
         });
     </script>

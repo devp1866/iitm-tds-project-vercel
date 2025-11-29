@@ -4,7 +4,6 @@ matplotlib
 seaborn
 openai
 python-dotenv
-xhtml2pdf
 markdown
 requests
 scikit-learn

@@ -12,7 +12,6 @@ from flask import (
 from werkzeug.utils import secure_filename
 import autolysis
 import markdown
-from xhtml2pdf import pisa
 import io
 import base64
 
@@ -20,16 +19,6 @@ app = Flask(__name__)
 # Use /tmp for Vercel compatibility (ephemeral storage)
 app.config["UPLOAD_FOLDER"] = "/tmp"
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-
-
-def convert_html_to_pdf_base64(source_html):
-    result_file = io.BytesIO()
-    pisa_status = pisa.CreatePDF(source_html, dest=result_file)
-    if pisa_status.err:
-        return None
-    result_file.seek(0)
-    pdf_base64 = base64.b64encode(result_file.read()).decode("utf-8")
-    return f"data:application/pdf;base64,{pdf_base64}"
 
 
 @app.route("/")
@@ -83,7 +72,7 @@ def analyze():
             if not readme_content:
                 return jsonify({"error": "Analysis failed to produce results"}), 500
 
-            # Generate PDF in memory
+            # Generate HTML for PDF (Client-side generation)
             html_content = markdown.markdown(readme_content, extensions=["tables"])
 
             # Embed Base64 images in HTML for PDF
@@ -144,14 +133,12 @@ def analyze():
             </html>
             """
 
-            pdf_base64 = convert_html_to_pdf_base64(full_html)
-
             # Return everything to client
             return jsonify(
                 {
                     "readme": readme_content,
                     "images": list(images.values()) if images else [],
-                    "pdf": pdf_base64,
+                    "pdf_html": full_html,
                 }
             )
 
