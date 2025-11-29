@@ -16,6 +16,80 @@ import io
 import base64
 
 
+load_dotenv()
+
+
+def save_plot_to_base64(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=300)  # High DPI for quality
+    buf.seek(0)
+    img_str = base64.b64encode(buf.read()).decode("utf-8")
+    plt.close(fig)
+    return f"data:image/png;base64,{img_str}"
+
+
+def read_dataset(file_path):
+    with open(file_path, "rb") as f:
+        raw_data = f.read()
+        result = detect(raw_data)
+        encoding = result["encoding"]
+    try:
+        df = pd.read_csv(file_path, encoding=encoding)
+        print("File successfully read.")
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return None
+    return df
+
+
+def generate_visualizations(data):
+    images = {}
+
+    # Correlation heatmap for numerical columns
+    numerical_cols = data.select_dtypes(include=["float64", "int64"]).columns
+    if len(numerical_cols) > 1:
+        plt.figure(figsize=(10, 8))
+        correlation_mat = data[numerical_cols].corr()
+        sns.heatmap(correlation_mat, annot=True, fmt=".2f", cmap="coolwarm")
+        plt.title("Correlation Heatmap")
+        images["heatmap.png"] = save_plot_to_base64(plt.gcf())
+
+    # Distribution plot for the first numerical column
+    if len(numerical_cols) > 0:
+        plt.figure(figsize=(8, 6))
+        sns.histplot(data[numerical_cols[0]], kde=True, color="blue")
+        plt.title(f"Distribution of {numerical_cols[0]}")
+        images[f"distribution_{numerical_cols[0]}.png"] = save_plot_to_base64(plt.gcf())
+
+    # Pairplot for the first few numerical columns (if more than 2 exist)
+    if len(numerical_cols) > 2:
+        pairplot_data = data[numerical_cols[:4]]  # Limit to the first 4 columns
+        sns.pairplot(pairplot_data, diag_kind="kde")
+        images["pairplot.png"] = save_plot_to_base64(plt.gcf())
+
+    return images
+
+
+def detect_outliers(data):
+    numerical_cols = data.select_dtypes(include=["float64", "int64"]).columns
+    outliers_summary = {}
+    for col in numerical_cols:
+        Q1 = data[col].quantile(0.25)
+        Q3 = data[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        outliers = data[(data[col] < lower_bound) | (data[col] > upper_bound)]
+        if not outliers.empty:
+            outliers_summary[col] = {
+                "count": len(outliers),
+                "percentage": (len(outliers) / len(data)) * 100,
+                "min_outlier": outliers[col].min(),
+                "max_outlier": outliers[col].max(),
+            }
+    return outliers_summary
+
+
 def perform_clustering(data):
     numerical_cols = data.select_dtypes(include=["float64", "int64"]).columns
     if len(numerical_cols) < 2:
