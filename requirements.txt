@@ -7,4 +7,5 @@ python-dotenv
 markdown
 requests
 numpy
+tabulate
 gunicorn
