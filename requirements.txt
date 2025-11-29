@@ -6,6 +6,5 @@ openai
 python-dotenv
 markdown
 requests
-scikit-learn
 numpy
 gunicorn
