@@ -199,9 +199,9 @@ def generate_story(data, summary_stats):
 
     # Define the request payload
     api_url = "https://aipipe.org/openrouter/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json","X-Title": "Autolysis"}
     payload = {
-        "model": "gpt-4o-mini",
+        "model": "openai/gpt-4o-mini",
         "messages": [{"role": "user", "content": prompt}],
     }
 
