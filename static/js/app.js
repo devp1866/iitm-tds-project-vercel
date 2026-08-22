@@ -249,28 +249,54 @@ function renderStatsTable(columnInfo) {
   if (!container) return;
   container.innerHTML = '';
 
-  Object.entries(columnInfo).forEach(([col, info]) => {
+  const entries = Object.entries(columnInfo);
+  if (entries.length === 0) {
+    container.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--clr-text-muted);padding:20px">No column data available.</td></tr>';
+    return;
+  }
+
+  entries.forEach(([col, info]) => {
     const tr = document.createElement('tr');
-    const numInfo = info.is_numeric
-      ? `<span style="color:var(--clr-text-muted)">μ=${fmt(info.mean)}</span>&nbsp;<span style="color:var(--clr-text-dim)">σ=${fmt(info.std)}</span>`
-      : (info.top_values ? Object.keys(info.top_values).slice(0, 3).map(v => `<code>${v}</code>`).join(', ') : '—');
+
+    // Stat summary — safely format, never show raw NaN
+    let numInfo;
+    if (info.is_numeric) {
+      const mu = fmt(info.mean ?? null);
+      const sigma = fmt(info.std ?? null);
+      numInfo = `<span style="color:var(--clr-text-muted)">μ=${mu}</span>&nbsp;<span style="color:var(--clr-text-dim)">σ=${sigma}</span>`;
+    } else if (info.top_values && Object.keys(info.top_values).length > 0) {
+      numInfo = Object.keys(info.top_values).slice(0, 3)
+        .map(v => `<code style="font-size:0.72rem;padding:1px 4px;background:rgba(73,101,128,0.2);border-radius:3px;white-space:nowrap">${String(v).substring(0, 20)}</code>`)
+        .join(' ');
+    } else {
+      numInfo = '<span style="color:var(--clr-text-dim)">categorical</span>';
+    }
+
+    // Missing cell
+    const missingCell = (info.n_missing || 0) > 0
+      ? `<span style="color:var(--clr-warning)">${info.n_missing} <span style="font-size:0.7rem">(${info.pct_missing ?? 0}%)</span></span>`
+      : '<span style="color:var(--clr-mint);font-size:0.8rem">✓ None</span>';
+
+    // dtype badge — truncate long names
+    const dtypeShort = (info.dtype || 'unknown').replace('datetime64[ns]', 'datetime').replace('object', 'text').replace('float64', 'float').replace('int64', 'int').replace('int32', 'int');
+    const badgeClass = info.is_numeric ? 'badge-sky' : info.is_datetime ? 'badge-mint' : 'badge-slate';
 
     tr.innerHTML = `
-      <td>
-        <div class="col-name-cell" data-col="${col}" title="Click for AI deep-dive analysis">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          ${col}
+      <td style="max-width:160px">
+        <div class="col-name-cell" data-col="${col}" title="Click for AI deep-dive: ${col}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;display:inline-block;vertical-align:middle">${col}</span>
         </div>
       </td>
-      <td><span class="badge ${info.is_numeric ? 'badge-sky' : info.is_datetime ? 'badge-mint' : 'badge-slate'}">${info.dtype}</span></td>
-      <td>${(info.n_unique || 0).toLocaleString()}</td>
-      <td>${(info.n_missing || 0) > 0 ? `<span style="color:var(--clr-warning)">${info.n_missing} (${info.pct_missing}%)</span>` : '<span style="color:var(--clr-mint)">None</span>'}</td>
-      <td style="font-size:0.8rem">${numInfo}</td>
+      <td style="white-space:nowrap"><span class="badge ${badgeClass}" style="font-size:0.65rem">${dtypeShort}</span></td>
+      <td style="text-align:right;white-space:nowrap">${(info.n_unique || 0).toLocaleString()}</td>
+      <td style="white-space:nowrap">${missingCell}</td>
+      <td style="font-size:0.78rem;max-width:200px;overflow:hidden">${numInfo}</td>
     `;
     container.appendChild(tr);
   });
 
-  // Attach click handlers — fixes the onclick not working issue
+  // Attach click handlers via delegation
   container.querySelectorAll('.col-name-cell').forEach(el => {
     el.addEventListener('click', () => {
       const col = el.dataset.col;
@@ -460,10 +486,13 @@ async function downloadPDF() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(val) {
-  if (val === null || val === undefined) return '—';
-  return typeof val === 'number'
-    ? val.toLocaleString(undefined, { maximumFractionDigits: 3 })
-    : val;
+  // Guard: null, undefined, and JavaScript NaN all display as dash
+  if (val === null || val === undefined) return '\u2014';
+  if (typeof val === 'number') {
+    if (Number.isNaN(val) || !Number.isFinite(val)) return '\u2014'; // NaN/Infinity → dash
+    return val.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  }
+  return String(val);
 }
 
 // Expose globals

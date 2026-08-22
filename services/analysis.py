@@ -370,11 +370,13 @@ def _safe_float(val):
 
 
 def json_serializer(obj):
-    """Custom JSON serializer for numpy types."""
+    """Custom JSON serializer for numpy types. NaN/Inf → None (JSON null)."""
     if isinstance(obj, (np.integer,)):
         return int(obj)
     if isinstance(obj, (np.floating,)):
-        return float(obj)
+        f = float(obj)
+        # JSON has no NaN/Infinity — return null instead
+        return None if (np.isnan(f) or np.isinf(f)) else f
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     if isinstance(obj, pd.Timestamp):
