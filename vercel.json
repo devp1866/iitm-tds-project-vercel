@@ -5,7 +5,8 @@
       "src": "app.py",
       "use": "@vercel/python",
       "config": {
-        "maxLambdaSize": "50mb"
+        "maxLambdaSize": "50mb",
+        "maxDuration": 60
       }
     }
   ],
@@ -18,22 +19,6 @@
       }
     },
     {
-      "src": "/static/robots\\.txt",
-      "dest": "/static/robots.txt",
-      "headers": {
-        "Cache-Control": "public, max-age=86400",
-        "Content-Type": "text/plain"
-      }
-    },
-    {
-      "src": "/static/sitemap\\.xml",
-      "dest": "/static/sitemap.xml",
-      "headers": {
-        "Cache-Control": "public, max-age=86400",
-        "Content-Type": "application/xml"
-      }
-    },
-    {
       "src": "/(.*)",
       "dest": "app.py",
       "headers": {
@@ -43,10 +28,6 @@
         "Referrer-Policy": "strict-origin-when-cross-origin"
       }
     }
-  ],
-  "functions": {
-    "app.py": {
-      "maxDuration": 60
-    }
-  }
+  ]
 }
+
