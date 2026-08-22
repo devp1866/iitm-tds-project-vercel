@@ -1,468 +1,305 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <!DOCTYPE html>
-    <html lang="en">
+{% block title %}Autolysis — Intelligent Data Analysis{% endblock %}
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Autolysis | Intelligent Data Analysis</title>
-        <meta name="description"
-            content="Autolysis: Intelligent automated data analysis tool. Upload CSVs and get instant insights, visualizations, and reports.">
-        <meta name="keywords"
-            content="data analysis, AI, machine learning, visualization, automated reporting, CSV analysis">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-        <style>
-            body {
-                font-family: 'Inter', sans-serif;
-                background-color: #0f172a;
-                color: #e2e8f0;
-                overflow-x: hidden;
-            }
+{% block nav_extra %}
+<script>
+  // Show "New Session" button only when results are shown
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver(() => {
+      const resultsVisible = !document.getElementById('results-section')?.classList.contains('hidden');
+      const btn = document.getElementById('new-session-btn');
+      if (btn) btn.style.display = resultsVisible ? 'flex' : 'none';
+    });
+    const results = document.getElementById('results-section');
+    if (results) observer.observe(results, { attributes: true });
+  });
+</script>
+{% endblock %}
 
-            .glass {
-                background: rgba(30, 41, 59, 0.7);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
+{% block content %}
+<main>
 
-            .gradient-text {
-                background: linear-gradient(to right, #38bdf8, #818cf8);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
+  <!-- ═══════════════════════════════════════ HERO / UPLOAD ═══════════════════ -->
+  <section id="hero-section">
+    <div class="hero">
+      <div class="hero-eyebrow">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        AI-Powered Analysis
+      </div>
 
-            .loader {
-                border: 4px solid rgba(255, 255, 255, 0.1);
-                border-left-color: #38bdf8;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
-            }
+      <h1 class="hero-title">
+        Unlock <span class="gradient-text">Data Intelligence</span><br>Instantly
+      </h1>
 
-            @keyframes spin {
-                0% {
-                    transform: rotate(0deg);
-                }
+      <p class="hero-sub">
+        Upload your dataset and let Autolysis do the rest — statistical analysis,
+        interactive charts, ML anomaly detection, and AI-generated insights in seconds.
+      </p>
 
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
+      <!-- Upload Zone -->
+      <div id="upload-zone" class="upload-zone" role="button" aria-label="Upload dataset file" tabindex="0">
+        <input type="file" id="file-input" class="hidden" accept=".csv,.xlsx,.xls,.json,.parquet">
 
-            .markdown-body h1 {
-                font-size: 2em;
-                font-weight: bold;
-                margin-bottom: 0.5em;
-                color: #f8fafc;
-            }
+        <div class="upload-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-sky)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+          </svg>
+        </div>
+        <div class="upload-title">Drop your dataset here</div>
+        <div class="upload-sub">or click to browse your files</div>
 
-            .markdown-body h2 {
-                font-size: 1.5em;
-                font-weight: bold;
-                margin-top: 1em;
-                margin-bottom: 0.5em;
-                color: #f1f5f9;
-                border-bottom: 1px solid #334155;
-                padding-bottom: 0.3em;
-            }
+        <div class="file-badges">
+          <span class="badge badge-sky">CSV</span>
+          <span class="badge badge-mint">Excel</span>
+          <span class="badge badge-sky">JSON</span>
+          <span class="badge badge-peach">Parquet</span>
+          <span class="badge badge-slate">Max 50MB</span>
+        </div>
+      </div>
 
-            .markdown-body h3 {
-                font-size: 1.25em;
-                font-weight: bold;
-                margin-top: 1em;
-                margin-bottom: 0.5em;
-                color: #e2e8f0;
-            }
+      <!-- Feature pills -->
+      <div class="feature-pills">
+        <span class="badge badge-sky">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Interactive Charts
+        </span>
+        <span class="badge badge-mint">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          AI Chat
+        </span>
+        <span class="badge badge-peach">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          Anomaly Detection
+        </span>
+        <span class="badge badge-sky">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share Reports
+        </span>
+      </div>
+    </div>
+  </section>
 
-            .markdown-body p {
-                margin-bottom: 1em;
-                line-height: 1.6;
-                color: #cbd5e1;
-            }
+  <!-- ═══════════════════════════════════════ PROGRESS ════════════════════════ -->
+  <section id="progress-section" class="hidden" style="padding-top: 80px;">
+    <div class="container-sm">
+      <div class="progress-container">
+        <h2 style="font-size:1.5rem; font-weight:700; margin-bottom:8px;">Analyzing Your Data</h2>
+        <p class="text-muted mb-lg">Sit tight — this usually takes 15–45 seconds</p>
 
-            .markdown-body ul {
-                list-style-type: disc;
-                padding-left: 1.5em;
-                margin-bottom: 1em;
-            }
-
-            .markdown-body li {
-                margin-bottom: 0.5em;
-            }
-
-            .markdown-body strong {
-                color: #38bdf8;
-                font-weight: 600;
-            }
-
-            .markdown-body code {
-                background: #1e293b;
-                padding: 0.2em 0.4em;
-                border-radius: 0.3em;
-                font-family: monospace;
-                color: #f472b6;
-            }
-
-            .markdown-body table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 1em;
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-
-            .markdown-body th,
-            .markdown-body td {
-                border: 1px solid #334155;
-                padding: 0.5em;
-                text-align: left;
-            }
-
-            .markdown-body th {
-                background: #1e293b;
-                color: #f8fafc;
-            }
-
-            /* Custom Scrollbar */
-            ::-webkit-scrollbar {
-                width: 8px;
-            }
-
-            ::-webkit-scrollbar-track {
-                background: #0f172a;
-            }
-
-            ::-webkit-scrollbar-thumb {
-                background: #334155;
-                border-radius: 4px;
-            }
-
-            ::-webkit-scrollbar-thumb:hover {
-                background: #475569;
-            }
-        </style>
-    </head>
-
-<body class="min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="fixed w-full z-50 glass border-b border-slate-700">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <div
-                    class="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-                        </path>
-                    </svg>
-                </div>
-                <span class="text-xl font-bold tracking-tight text-white">Autolysis</span>
+        <!-- Stage dots -->
+        <div class="progress-stages mb-lg">
+          <div class="stage active" id="stage-0-wrap">
+            <div class="stage-dot" id="stage-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
             </div>
-            <div class="flex items-center space-x-6">
-                <a href="/" class="text-sm font-medium text-slate-400 hover:text-white transition-colors">Home</a>
-                <a href="/about" class="text-sm font-medium text-slate-400 hover:text-white transition-colors">About</a>
-                <button onclick="startNewSession()"
-                    class="text-sm font-medium text-red-400 hover:text-red-300 transition-colors">New Session</button>
-                <a href="#"
-                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-yellow-500/20 flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                        </path>
-                    </svg>
-                    Donate
-                </a>
+            <span class="stage-label">Reading</span>
+          </div>
+          <div class="stage" id="stage-1-wrap">
+            <div class="stage-dot" id="stage-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
             </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-6 pt-32 pb-12 relative">
-
-        <!-- Background Blobs -->
-        <div
-            class="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob">
-        </div>
-        <div
-            class="absolute top-20 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000">
-        </div>
-
-        <!-- Hero Section -->
-        <div id="hero" class="text-center max-w-3xl mx-auto mb-16">
-            <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-                Unlock Insights with <br><span class="gradient-text">Intelligent Analysis</span>
-            </h1>
-            <p class="text-lg text-slate-400 mb-10">
-                Upload your CSV dataset and let our AI-powered engine discover trends, anomalies, and key metrics
-                instantly. No setup required.
-            </p>
-
-            <!-- Upload Area -->
-            <div id="drop-zone"
-                class="glass rounded-2xl p-10 border-2 border-dashed border-slate-600 hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden">
-                <input type="file" id="file-input" class="hidden" accept=".csv">
-                <div class="relative z-10">
-                    <div
-                        class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                        <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-white mb-2">Drop your CSV file here</h3>
-                    <p class="text-slate-400 text-sm">or click to browse</p>
-                </div>
-                <div id="upload-progress"
-                    class="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-300 w-0"></div>
+            <span class="stage-label">Statistics</span>
+          </div>
+          <div class="stage" id="stage-2-wrap">
+            <div class="stage-dot" id="stage-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94"/></svg>
             </div>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loading" class="hidden flex flex-col items-center justify-center py-20">
-            <div class="loader mb-6"></div>
-            <h2 class="text-2xl font-semibold text-white mb-2">Analyzing Data...</h2>
-            <p class="text-slate-400 animate-pulse">Crunching numbers, detecting anomalies, and writing the story.</p>
-        </div>
-
-        <!-- Results Section -->
-        <div id="results" class="hidden opacity-0 transform translate-y-10 transition-all duration-700">
-
-            <!-- Actions Bar -->
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-3xl font-bold text-white">Analysis Report</h2>
-                <button id="download-btn"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium flex items-center transition-colors shadow-lg shadow-blue-500/20">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                    </svg>
-                    Download PDF
-                </button>
+            <span class="stage-label">ML Analysis</span>
+          </div>
+          <div class="stage" id="stage-3-wrap">
+            <div class="stage-dot" id="stage-3">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                <!-- Main Report -->
-                <div class="lg:col-span-2 space-y-8">
-                    <div class="glass rounded-2xl p-8 markdown-body" id="report-content">
-                        <!-- Markdown content will be injected here -->
-                    </div>
-                </div>
-
-                <!-- Sidebar / Visualizations -->
-                <div class="space-y-8">
-                    <div class="glass rounded-2xl p-6">
-                        <h3 class="text-xl font-bold text-white mb-4">Visualizations</h3>
-                        <div id="image-gallery" class="space-y-4">
-                            <!-- Images will be injected here -->
-                        </div>
-                    </div>
-                </div>
+            <span class="stage-label">Charts</span>
+          </div>
+          <div class="stage" id="stage-4-wrap">
+            <div class="stage-dot" id="stage-4">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
             </div>
+            <span class="stage-label">AI Story</span>
+          </div>
+          <div class="stage" id="stage-5-wrap">
+            <div class="stage-dot" id="stage-5">✓</div>
+            <span class="stage-label">Done</span>
+          </div>
         </div>
 
-    </main>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+        </div>
+        <div class="progress-label" id="progress-label">Starting analysis...</div>
+        <div class="progress-pct" id="progress-pct">0%</div>
+      </div>
+    </div>
+  </section>
 
-    <footer class="border-t border-slate-800 mt-12 py-8 text-center text-slate-500 text-sm">
-        <p>&copy; 2024 Autolysis. All rights reserved.</p>
-    </footer>
+  <!-- ═══════════════════════════════════════ RESULTS ════════════════════════ -->
+  <section id="results-section" class="hidden" style="padding-top: 80px; padding-bottom: 60px;">
+    <div class="container">
 
-    <script>
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const hero = document.getElementById('hero');
-        const loading = document.getElementById('loading');
-        const results = document.getElementById('results');
-        const reportContent = document.getElementById('report-content');
-        const imageGallery = document.getElementById('image-gallery');
-        const downloadBtn = document.getElementById('download-btn');
+      <!-- Header -->
+      <div class="results-header">
+        <div>
+          <h2 class="results-title" id="result-filename">Analysis Report</h2>
+          <p class="results-meta" id="result-meta"></p>
+        </div>
+        <div class="results-actions">
+          <!-- Share URL bar -->
+          <div class="share-bar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--clr-sky)" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <input class="share-url" id="share-url-input" readonly placeholder="Share link loading..." aria-label="Share URL">
+            <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">Copy</button>
+          </div>
+          <button class="btn btn-primary btn-sm" id="download-pdf-btn" onclick="downloadPDF()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </button>
+        </div>
+      </div>
 
-        let currentPdfHtml = null;
+      <!-- Tab bar -->
+      <div class="tab-bar mb-lg">
+        <button class="tab-btn active" data-tab="report">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Report
+        </button>
+        <button class="tab-btn" data-tab="charts">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Charts
+        </button>
+        <button class="tab-btn" data-tab="anomalies">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Anomalies
+        </button>
+        <button class="tab-btn" data-tab="stats">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          Column Stats
+        </button>
+      </div>
 
-        // Check for existing session on load (Client-side only)
-        const savedData = localStorage.getItem('analysisData');
-        if (savedData) {
-            try {
-                const data = JSON.parse(savedData);
-                renderResults(data);
-                // Hide hero and show results immediately
-                hero.style.display = 'none';
-                loading.classList.add('hidden');
-                results.classList.remove('hidden');
-                results.style.opacity = 1;
-                results.style.transform = 'translateY(0)';
-            } catch (e) {
-                console.error('Error restoring session:', e);
-                localStorage.removeItem('analysisData');
-            }
-        }
+      <!-- Tab Panels -->
 
-        // Drag and Drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-blue-400', 'bg-slate-800/50');
-        });
+      <!-- Report -->
+      <div class="tab-panel active" data-panel="report">
+        <div class="card card-pad markdown-body" id="tab-report-content"></div>
+      </div>
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-blue-400', 'bg-slate-800/50');
-        });
+      <!-- Charts -->
+      <div class="tab-panel" data-panel="charts">
+        <div id="charts-grid" class="charts-grid"></div>
+      </div>
 
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-blue-400', 'bg-slate-800/50');
-            const files = e.dataTransfer.files;
-            if (files.length) handleFile(files[0]);
-        });
+      <!-- Anomalies -->
+      <div class="tab-panel" data-panel="anomalies">
+        <div class="card card-pad" id="anomaly-summary">
+          <p class="text-muted">Loading anomaly data...</p>
+        </div>
+      </div>
 
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length) handleFile(fileInput.files[0]);
-        });
+      <!-- Stats Table -->
+      <div class="tab-panel" data-panel="stats">
+        <div class="card">
+          <div style="padding:16px 20px; border-bottom:1px solid var(--clr-border); display:flex; align-items:center; gap:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-sky)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <span style="font-weight:600; font-size:0.9rem;">Column Statistics</span>
+            <span class="text-xs text-muted" style="margin-left:auto">Click a column name for AI deep-dive</span>
+          </div>
+          <div class="stats-table-wrap">
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Type</th>
+                  <th>Unique Values</th>
+                  <th>Missing</th>
+                  <th>Key Stats</th>
+                </tr>
+              </thead>
+              <tbody id="stats-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-        function handleFile(file) {
-            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-                alert('Please upload a CSV file.');
-                return;
-            }
+    </div>
+  </section>
 
-            // UI Transition
-            gsap.to(hero, {
-                opacity: 0, y: -20, duration: 0.5, display: 'none', onComplete: () => {
-                    loading.classList.remove('hidden');
-                    gsap.from(loading, { opacity: 0, y: 20, duration: 0.5 });
-                }
-            });
+</main>
 
-            const formData = new FormData();
-            formData.append('file', file);
+<!-- ═══════════════════════ AI CHAT DRAWER ════════════════════════════════ -->
+<aside id="chat-drawer" class="chat-drawer" aria-label="AI chat assistant" role="complementary">
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <div class="chat-avatar" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-bg-deep)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div>
+        <div class="chat-title">Ask AI</div>
+        <div class="chat-subtitle">About your dataset</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="ChatModule.closeDrawer()" aria-label="Close chat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
 
-            fetch('/analyze', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) throw new Error(data.error);
+  <div class="chat-messages" id="chat-messages" role="log" aria-label="Chat messages"></div>
 
-                    // Save to localStorage (Client-side persistence)
-                    try {
-                        localStorage.setItem('analysisData', JSON.stringify(data));
-                    } catch (e) {
-                        console.warn('Storage quota exceeded, session will not persist on reload.');
-                    }
+  <!-- Starter chips -->
+  <div id="chat-starters" class="chat-starter-chips">
+    <div class="starter-label">Suggested questions</div>
+    <div id="starter-chips"></div>
+  </div>
 
-                    // Render Report
-                    renderResults(data);
-                })
-                .catch(err => {
-                    loading.classList.add('hidden');
-                    hero.style.display = 'block';
-                    gsap.to(hero, { opacity: 1, y: 0, duration: 0.5 });
-                    alert('Analysis failed: ' + err.message);
-                });
-        }
+  <div class="chat-input-area">
+    <textarea
+      id="chat-input"
+      class="chat-input"
+      placeholder="Ask anything about your data..."
+      rows="1"
+      aria-label="Chat input"
+    ></textarea>
+    <button class="btn btn-primary btn-sm" onclick="ChatModule.sendMessage()" aria-label="Send message" style="padding:10px 12px; flex-shrink:0;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</aside>
 
-        function startNewSession() {
-            if (confirm('Starting a new session will clear the current analysis. Are you sure?')) {
-                localStorage.removeItem('analysisData');
-                window.location.reload();
-            }
-        }
+<!-- Chat FAB -->
+<button
+  id="chat-fab"
+  class="chat-fab hidden"
+  onclick="ChatModule.toggleDrawer()"
+  aria-label="Open AI chat"
+  title="Ask AI about your data"
+>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span class="chat-fab-badge" id="chat-fab-badge"></span>
+</button>
 
-        function renderResults(data) {
-            console.log('Rendering results');
-
-            if (!data) {
-                console.error('No data received');
-                return;
-            }
-
-            currentPdfHtml = data.pdf_html;
-
-            // Render Report
-            if (data.readme) {
-                try {
-                    reportContent.innerHTML = marked.parse(data.readme);
-                } catch (e) {
-                    console.error('Error parsing markdown:', e);
-                    reportContent.innerHTML = '<p class="text-red-400">Error parsing report content.</p>';
-                }
-            } else {
-                reportContent.innerHTML = '<p class="text-slate-400">No report content available.</p>';
-            }
-
-            // Render Images
-            imageGallery.innerHTML = '';
-            if (data.images && Array.isArray(data.images)) {
-                data.images.forEach((imgBase64, index) => {
-                    if (!imgBase64) return;
-
-                    const container = document.createElement('div');
-                    container.className = 'space-y-2';
-
-                    const img = document.createElement('img');
-                    img.src = imgBase64;
-                    img.className = 'w-full rounded-lg shadow-lg hover:scale-105 transition-transform duration-300 cursor-pointer border border-slate-700';
-                    img.onclick = () => {
-                        const win = window.open();
-                        win.document.write('<iframe src="' + imgBase64 + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
-                    };
-
-                    const desc = document.createElement('p');
-                    // Simple naming since we don't have filenames anymore
-                    let filename = 'Visualization ' + (index + 1);
-
-                    desc.textContent = filename;
-                    desc.className = 'text-sm text-slate-400 text-center italic';
-
-                    container.appendChild(img);
-                    container.appendChild(desc);
-                    imageGallery.appendChild(container);
-                });
-            } else {
-                imageGallery.innerHTML = '<p class="text-slate-400 text-center">No visualizations generated.</p>';
-            }
-
-            // Show Results
-            loading.classList.add('hidden');
-            results.classList.remove('hidden');
-            gsap.to(results, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
-        }
-
-        downloadBtn.addEventListener('click', () => {
-            if (currentPdfHtml) {
-                // Create a temporary container for the PDF content
-                const element = document.createElement('div');
-                element.innerHTML = currentPdfHtml;
-
-                // Configure html2pdf options
-                const opt = {
-                    margin: 10,
-                    filename: 'analysis_report.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                // Generate PDF
-                html2pdf().set(opt).from(element).save();
-            } else {
-                alert('PDF content not available.');
-            }
-        });
-    </script>
-</body>
-
-</html>
+<!-- ═══════════════════════ COLUMN MODAL ══════════════════════════════════ -->
+<div id="column-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="column-modal-title">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="column-modal-title">Column Analysis</h3>
+      <button class="btn btn-ghost btn-sm" onclick="ChartsModule.closeColumnModal()" aria-label="Close modal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- AI Insight -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:0.8rem; font-weight:600; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mint)" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/></svg>
+          AI Insight
+        </div>
+        <div id="column-modal-insight" class="card card-pad" style="padding:16px; font-size:0.875rem;"></div>
+      </div>
+      <!-- Charts -->
+      <div id="column-modal-charts"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

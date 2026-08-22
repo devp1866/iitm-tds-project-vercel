@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Autolysis — AI-Powered Data Analysis{% endblock %}</title>
+  <meta name="description" content="{% block description %}Autolysis: Upload any CSV, Excel, JSON or Parquet file and get instant AI insights, interactive Plotly charts, ML anomaly detection, and shareable reports — no code required.{% endblock %}">
+  <meta name="keywords" content="data analysis, AI analysis, automated EDA, CSV analysis, machine learning, data visualization, Plotly charts, anomaly detection">
+  <meta name="author" content="Devkumar Patel">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://iitm-tds-project-vercel.vercel.app{% block canonical_path %}/{% endblock %}">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://iitm-tds-project-vercel.vercel.app{% block og_path %}/{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}Autolysis — AI-Powered Data Analysis{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Upload any dataset and get instant AI insights, interactive charts, and professional reports in seconds.{% endblock %}">
+  <meta property="og:image" content="https://iitm-tds-project-vercel.vercel.app/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Autolysis">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@devkumarp">
+  <meta name="twitter:creator" content="@devkumarp">
+  <meta name="twitter:title" content="{% block tw_title %}Autolysis — AI-Powered Data Analysis{% endblock %}">
+  <meta name="twitter:description" content="Upload any dataset and get instant AI insights, interactive charts, and professional reports.">
+  <meta name="twitter:image" content="https://iitm-tds-project-vercel.vercel.app/static/og-image.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.svg') }}">
+  <meta name="theme-color" content="#0a1520">
+  <meta name="msapplication-TileColor" content="#0a1520">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- External Libraries (deferred so they don't block paint) -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Autolysis",
+    "url": "https://iitm-tds-project-vercel.vercel.app",
+    "description": "AI-powered automated data analysis platform. Upload CSV, Excel, JSON or Parquet files and get instant insights, charts, and reports.",
+    "applicationCategory": "DataApplication",
+    "operatingSystem": "Any",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": {
+      "@type": "Person",
+      "name": "Devkumar Patel",
+      "url": "https://devkumarpatel.vercel.app/"
+    }
+  }
+  </script>
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- Navigation -->
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo" aria-label="Autolysis home">
+      <div class="nav-logo-icon" aria-hidden="true">
+        <!-- stroke="#0a1520" so the waveform is visible on the sky/mint gradient background -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a1520" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <span class="nav-logo-text">Autolysis</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Home</a>
+      <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
+      {% block nav_extra %}{% endblock %}
+      <button id="new-session-btn" onclick="startNewSession()" class="btn btn-ghost btn-sm" style="display:none" aria-label="Start new analysis session">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.41"/></svg>
+        New Session
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Page Content -->
+{% block content %}{% endblock %}
+
+<!-- Footer -->
+<footer class="footer">
+  <p>© 2025 Autolysis — Built by <a href="https://devkumarpatel.vercel.app/" target="_blank" rel="noopener noreferrer">Devkumar Patel</a></p>
+</footer>
+
+<!-- Scripts (order matters: charts → chat → app) -->
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

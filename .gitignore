@@ -5,9 +5,18 @@ venv/
 env/
 .env
 .env.*
+!.env.example
 node_modules/
 .next/
 dist/
 build/
 .vercel/
 .DS_Store
+
+# Firebase credentials (NEVER commit this)
+firebase-credentials.json
+*.json.bak
+
+# Temp files
+/tmp/
+*.tmp

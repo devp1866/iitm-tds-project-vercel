@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Report — Autolysis{% endblock %}
+{% block description %}Public analysis report shared via Autolysis — the AI-powered data analysis tool.{% endblock %}
+
+{% block content %}
+<main style="padding-top: 80px; padding-bottom: 60px; min-height: 100vh;">
+  <div class="container" id="report-main">
+
+    <!-- Loading state -->
+    <div id="report-loading" style="text-align:center; padding:80px 20px;">
+      <div style="width:48px;height:48px;border:3px solid var(--clr-border);border-top-color:var(--clr-sky);border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto 20px;"></div>
+      <p class="text-muted">Loading shared report...</p>
+    </div>
+
+    <!-- Report content (hidden until loaded) -->
+    <div id="report-content" class="hidden">
+      <!-- Header -->
+      <div class="results-header">
+        <div>
+          <div style="margin-bottom:8px;">
+            <span class="badge badge-sky" style="font-size:0.72rem;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Shared Report
+            </span>
+          </div>
+          <h1 class="results-title" id="report-filename">Analysis Report</h1>
+          <p class="results-meta" id="report-meta"></p>
+        </div>
+        <div class="results-actions">
+          <a href="/" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            Analyze Your Own Data
+          </a>
+        </div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar mb-lg">
+        <button class="tab-btn active" data-tab="r-report">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+          Report
+        </button>
+        <button class="tab-btn" data-tab="r-charts">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Charts
+        </button>
+        <button class="tab-btn" data-tab="r-anomalies">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94"/></svg>
+          Anomalies
+        </button>
+      </div>
+
+      <!-- Panels -->
+      <div class="tab-panel active" data-panel="r-report">
+        <div class="card card-pad markdown-body" id="r-report-content"></div>
+      </div>
+      <div class="tab-panel" data-panel="r-charts">
+        <div id="r-charts-grid" class="charts-grid"></div>
+      </div>
+      <div class="tab-panel" data-panel="r-anomalies">
+        <div class="card card-pad" id="r-anomaly-summary"></div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="report-error" class="hidden" style="text-align:center; padding:80px 20px;">
+      <div style="font-size:3rem; margin-bottom:16px;">🔍</div>
+      <h2 style="font-size:1.5rem; font-weight:700; margin-bottom:8px;">Report Not Found</h2>
+      <p class="text-muted mb-lg">This shared report may have expired or the link is incorrect.</p>
+      <a href="/" class="btn btn-primary">Analyze Your Own Data</a>
+    </div>
+
+  </div>
+</main>
+
+<style>
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = '{{ share_token }}';
+
+  // Init tabs
+  document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === btn.dataset.tab));
+      document.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('active', p.dataset.panel === btn.dataset.tab));
+    });
+  });
+
+  try {
+    const res = await fetch(`/api/report/${token}`);
+    const data = await res.json();
+
+    if (!res.ok || data.error) throw new Error(data.error || 'Not found');
+
+    // Show content
+    document.getElementById('report-loading').classList.add('hidden');
+    document.getElementById('report-content').classList.remove('hidden');
+
+    document.getElementById('report-filename').textContent = data.filename || 'Analysis Report';
+    if (data.created_at) {
+      document.getElementById('report-meta').textContent =
+        `Analyzed on ${new Date(data.created_at).toLocaleString()}`;
+    }
+
+    // Markdown
+    if (data.readme) {
+      document.getElementById('r-report-content').innerHTML = marked.parse(data.readme);
+    }
+
+    // Charts
+    if (data.charts && window.Plotly) {
+      const grid = document.getElementById('r-charts-grid');
+      data.charts.forEach((chart, i) => {
+        const id = `rc-${i}`;
+        const card = document.createElement('div');
+        card.className = 'chart-card';
+        card.innerHTML = `
+          <div class="chart-card-header">
+            <span class="chart-card-title">${chart.title || 'Chart'}</span>
+            <span class="chart-card-type">${chart.type || ''}</span>
+          </div>
+          <div id="${id}" style="height:280px;"></div>
+        `;
+        grid.appendChild(card);
+        setTimeout(() => {
+          const el = document.getElementById(id);
+          if (el && chart.figure) {
+            const layout = Object.assign({}, chart.figure.layout || {}, {
+              paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+              height: 280, title: undefined,
+              font: { color: '#e4f2fb', family: 'Inter, sans-serif' },
+              xaxis: { gridcolor: 'rgba(73,101,128,0.3)' },
+              yaxis: { gridcolor: 'rgba(73,101,128,0.3)' },
+            });
+            Plotly.newPlot(el, chart.figure.data || [], layout, { responsive: true, displaylogo: false });
+          }
+        }, 100);
+      });
+    }
+
+    // Anomaly
+    if (data.anomaly_data) {
+      const ad = data.anomaly_data;
+      const el = document.getElementById('r-anomaly-summary');
+      if (ad.error) {
+        el.innerHTML = `<p class="text-muted">${ad.error}</p>`;
+      } else {
+        el.innerHTML = `
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <div class="card card-pad" style="flex:1;min-width:140px;text-align:center;">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--clr-error)">${(ad.anomaly_count||0).toLocaleString()}</div>
+              <div class="text-muted text-sm">Anomalies</div>
+            </div>
+            <div class="card card-pad" style="flex:1;min-width:140px;text-align:center;">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--clr-peach)">${ad.anomaly_pct||0}%</div>
+              <div class="text-muted text-sm">of Dataset</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+  } catch (e) {
+    document.getElementById('report-loading').classList.add('hidden');
+    document.getElementById('report-error').classList.remove('hidden');
+  }
+});
+</script>
+{% endblock %}

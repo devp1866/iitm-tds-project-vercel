@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /report/
+
+# Block API and private routes from indexing
+Disallow: /submit
+Disallow: /status/
+Disallow: /result/
+Disallow: /chat
+Disallow: /column-analyze
+Disallow: /contact
+Disallow: /api/
+Disallow: /health
+Disallow: /static/
+
+Sitemap: https://iitm-tds-project-vercel.vercel.app/sitemap.xml

@@ -1,11 +1,36 @@
-Flask
-pandas
-matplotlib
-seaborn
-openai
-python-dotenv
-markdown
-requests
-numpy
-tabulate
-gunicorn
+# Web Framework
+Flask==3.0.3
+gunicorn==22.0.0
+
+# Data Processing
+pandas==2.2.2
+numpy==1.26.4
+openpyxl==3.1.2
+pyarrow==16.1.0
+charset-normalizer==3.3.2
+
+# Visualization
+plotly==5.22.0
+
+# ML / Analysis
+scikit-learn==1.5.0
+
+# LLM / HTTP
+requests==2.32.3
+openai==1.35.7
+
+# Firebase
+firebase-admin==6.5.0
+
+# Redis (Upstash compatible)
+upstash-redis==1.1.0
+
+# Utilities
+python-dotenv==1.0.1
+markdown==3.6
+tabulate==0.9.0
+structlog==24.1.0
+flask-limiter==3.7.0
+
+# Markdown to html
+Markdown==3.6

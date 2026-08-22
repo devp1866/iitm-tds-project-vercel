@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "app.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.+\\.(?:css|js|woff2?|ttf|svg|png|jpg|jpeg|webp|ico|gif))",
+      "dest": "/static/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/static/robots\\.txt",
+      "dest": "/static/robots.txt",
+      "headers": {
+        "Cache-Control": "public, max-age=86400",
+        "Content-Type": "text/plain"
+      }
+    },
+    {
+      "src": "/static/sitemap\\.xml",
+      "dest": "/static/sitemap.xml",
+      "headers": {
+        "Cache-Control": "public, max-age=86400",
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app.py",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin"
+      }
+    }
+  ],
+  "functions": {
+    "app.py": {
+      "maxDuration": 60
+    }
+  }
+}
