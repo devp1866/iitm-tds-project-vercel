@@ -1,12 +1,12 @@
 # Autolysis v2 | Intelligent Data Analysis Platform
 
-**Autolysis** is a production-ready, AI-powered automated data analysis platform. Upload a CSV, Excel, JSON, or Parquet file and get instant interactive charts, ML anomaly detection, statistical insights, and AI-narrated reports — with a conversational AI you can chat with about your data.
+**Autolysis** is a production-ready, AI-powered automated data analysis platform. Upload a CSV, Excel or JSON file and get instant interactive charts, ML anomaly detection, statistical insights, and AI-narrated reports — with a conversational AI you can chat with about your data.
 
 ## ✨ Features
 
 | Feature | Details |
 |---|---|
-| **Multi-format Upload** | CSV, Excel (.xlsx/.xls), JSON, Parquet (up to 50MB) |
+| **Multi-format Upload** | CSV, Excel (.xlsx/.xls), JSON (up to 50MB) |
 | **Interactive Plotly Charts** | Zoomable, hoverable, exportable charts — auto-selected by data type |
 | **AI Report** | GPT-4o-mini generated narrative with structured sections |
 | **AI Chat** | Ask questions about your data after analysis |

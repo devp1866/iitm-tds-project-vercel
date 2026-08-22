@@ -104,6 +104,14 @@ def sitemap_xml():
                                mimetype="application/xml")
 
 
+@app.route("/favicon.ico")
+@app.route("/favicon.png")
+def favicon():
+    """Redirect legacy favicon requests to the SVG favicon."""
+    return send_from_directory(app.static_folder, "favicon.svg",
+                               mimetype="image/svg+xml")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ANALYSIS API
 # ─────────────────────────────────────────────────────────────────────────────
