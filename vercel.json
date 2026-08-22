@@ -6,7 +6,15 @@
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "50mb",
-        "maxDuration": 60
+        "maxDuration": 60,
+        "includeFiles": [
+          "static/**",
+          "templates/**",
+          "services/**",
+          "models/**",
+          "jobs/**",
+          "*.py"
+        ]
       }
     }
   ],
