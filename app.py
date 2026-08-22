@@ -157,6 +157,7 @@ def submit():
 
 
 @app.route("/status/<job_id>", methods=["GET"])
+@limiter.exempt
 def job_status(job_id: str):
     """Poll job status. Returns status, progress (0-100), and label."""
     job = get_job(job_id)
@@ -174,6 +175,7 @@ def job_status(job_id: str):
 
 
 @app.route("/result/<job_id>", methods=["GET"])
+@limiter.exempt
 def get_result(job_id: str):
     """
     Fetch complete analysis results once job is done.
