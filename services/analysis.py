@@ -25,7 +25,7 @@ MAX_ROWS = 100_000  # Safety limit
 
 def read_dataset(file_path: str, file_type: str = None) -> pd.DataFrame:
     """
-    Read a dataset from file. Supports CSV, Excel, JSON, Parquet.
+    Read a dataset from file. Supports CSV, Excel (.xlsx/.xls), and JSON.
     Returns a DataFrame or raises ValueError on failure.
     """
     ext = file_type or os.path.splitext(file_path)[1].lower().lstrip(".")
@@ -40,10 +40,8 @@ def read_dataset(file_path: str, file_type: str = None) -> pd.DataFrame:
             df = pd.read_json(file_path)
             if not isinstance(df, pd.DataFrame):
                 raise ValueError("JSON did not parse to a tabular structure.")
-        elif ext == "parquet":
-            df = pd.read_parquet(file_path)
         else:
-            raise ValueError(f"Unsupported file format: .{ext}")
+            raise ValueError(f"Unsupported file format: .{ext}. Supported: CSV, Excel, JSON.")
     except Exception as e:
         logger.error("read_dataset_failed", ext=ext, error=str(e))
         raise ValueError(f"Failed to read file: {e}") from e
