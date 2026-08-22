@@ -29,7 +29,15 @@ logger = structlog.get_logger()
 # APP SETUP
 # ─────────────────────────────────────────────────────────────────────────────
 
-app = Flask(__name__)
+# CRITICAL for Vercel/serverless: resolve paths relative to THIS FILE,
+# not os.getcwd() — which points to a wrong internal directory on Vercel.
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(
+    __name__,
+    static_folder=os.path.join(ROOT_DIR, "static"),
+    template_folder=os.path.join(ROOT_DIR, "templates"),
+)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
 app.config["UPLOAD_FOLDER"] = "/tmp"
 app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_FILE_SIZE_MB", 50)) * 1024 * 1024
