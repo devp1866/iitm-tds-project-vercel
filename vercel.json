@@ -12,22 +12,8 @@
   ],
   "routes": [
     {
-      "src": "/static/(.+\\.(?:css|js|woff2?|ttf|svg|png|jpg|jpeg|webp|ico|gif))",
-      "dest": "/static/$1",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      }
-    },
-    {
       "src": "/(.*)",
-      "dest": "app.py",
-      "headers": {
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "SAMEORIGIN",
-        "X-XSS-Protection": "1; mode=block",
-        "Referrer-Policy": "strict-origin-when-cross-origin"
-      }
+      "dest": "app.py"
     }
   ]
 }
-
