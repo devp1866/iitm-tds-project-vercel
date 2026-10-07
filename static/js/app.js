@@ -74,7 +74,7 @@ function initUploadZone() {
   });
 }
 
-const ALLOWED_EXTS = ['csv', 'xlsx', 'xls', 'json'];
+const ALLOWED_EXTS = ['csv'];
 const MAX_SIZE_MB = 50;
 
 async function handleFile(file) {

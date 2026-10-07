@@ -51,7 +51,7 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls", "json"}
+ALLOWED_EXTENSIONS = {"csv"}
 
 
 def _allowed_file(filename: str) -> bool:
