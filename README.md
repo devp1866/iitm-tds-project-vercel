@@ -1,5 +1,7 @@
 # Autolysis v2 | Intelligent Data Analysis Platform
 
+🔗 **Live Demo:** [https://autolysis-dev.vercel.app/](https://autolysis-dev.vercel.app/)
+
 **Autolysis** is a production-ready, AI-powered automated data analysis platform. Upload a CSV, Excel or JSON file and get instant interactive charts, ML anomaly detection, statistical insights, and AI-narrated reports — with a conversational AI you can chat with about your data.
 
 ## ✨ Features
@@ -17,6 +19,14 @@
 | **Public Share Links** | Share `/report/<token>` with teammates |
 | **Working Contact Form** | Web3Forms powered email delivery |
 | **Firebase Persistence** | Reports stored in Firestore (with in-memory fallback) |
+
+## 🔒 Data Privacy & Limits
+
+This application handles data securely and efficiently:
+- **Zero Data Leakage to LLMs:** Raw dataset rows are **never** sent to the AI. The system pre-computes statistical aggregates (means, correlations, missing values, column names) locally in Python and only sends these *metadata summaries* to the LLM (GPT-4o-mini).
+- **File Size Limits:** Uploads are strictly limited to **50MB** to ensure snappy processing and prevent server memory exhaustion.
+- **Processing Time:** Analysis completes entirely asynchronously in the background. Most 50MB files finish within 15–45 seconds.
+- **Data Retention:** Temporary files are stored in `/tmp` and discarded after the session ends.
 
 ## 🛠️ Setup
 
