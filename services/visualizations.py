@@ -47,6 +47,10 @@ def generate_smart_charts(df: pd.DataFrame, anomaly_data: dict = None) -> list[d
     Generate a list of Plotly chart JSON dicts based on data characteristics.
     Each dict: {"title": str, "type": str, "figure": plotly_json_dict}
     """
+    # Prevent Plotly from generating 1MB+ JSON payloads which crashes Firestore
+    if len(df) > 1000:
+        df = df.sample(1000, random_state=42)
+
     charts = []
     numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
     cat_cols = [
