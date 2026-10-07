@@ -148,6 +148,10 @@ def detect_anomalies_ml(df: pd.DataFrame) -> dict:
     if numeric.shape[1] < 1:
         return {"error": "No numeric columns for anomaly detection."}
 
+    # Speed up ML operations for large datasets
+    if len(numeric) > 5000:
+        numeric = numeric.sample(5000, random_state=42)
+
     clean = numeric.dropna()
     if len(clean) < 10:
         return {"error": "Insufficient data rows for anomaly detection (need ≥10)."}
@@ -171,6 +175,14 @@ def detect_anomalies_ml(df: pd.DataFrame) -> dict:
         anomaly_indices = clean.index[anomaly_mask].tolist()
         anomaly_count = int(anomaly_mask.sum())
 
+        # Extract top 5 most extreme anomalies
+        top_anomalies_df = pd.DataFrame()
+        if anomaly_count > 0:
+            clean_with_scores = clean.copy()
+            clean_with_scores["_anomaly_score"] = scores
+            top_anomalies = clean_with_scores[anomaly_mask].sort_values("_anomaly_score").head(5)
+            top_anomalies_df = top_anomalies.drop(columns=["_anomaly_score"])
+
         return {
             "anomaly_indices": anomaly_indices,
             "anomaly_scores": scores.tolist(),
@@ -178,6 +190,7 @@ def detect_anomalies_ml(df: pd.DataFrame) -> dict:
             "anomaly_pct": round(anomaly_count / len(clean) * 100, 2),
             "feature_columns": list(numeric.columns),
             "contamination_used": round(contamination, 4),
+            "top_anomalies": json.loads(top_anomalies_df.to_json(orient="records")),
         }
     except Exception as e:
         logger.error("anomaly_detection_failed", error=str(e))
@@ -192,6 +205,10 @@ def perform_clustering(df: pd.DataFrame) -> dict:
     numeric = df.select_dtypes(include=["number"]).dropna()
     if len(numeric.columns) < 2:
         return {"error": "Need ≥2 numerical columns for clustering."}
+    
+    # Speed up ML operations
+    if len(numeric) > 5000:
+        numeric = numeric.sample(5000, random_state=42)
     if len(numeric) < 10:
         return {"error": "Insufficient rows for clustering (need ≥10)."}
 

@@ -18,6 +18,7 @@ import os
 import json
 import uuid
 import threading
+import pandas as pd
 import structlog
 
 from services.analysis import (
@@ -122,7 +123,7 @@ def _run_analysis_job(job_id: str, file_path: str, filename: str, file_ext: str)
 
         # Build markdown report with stats table
         from services.analysis import json_serializer
-        readme_full = _build_full_readme(readme, df, filename)
+        readme_full = _build_full_readme(readme, df, filename, anomaly_data)
 
         # Stage 9: Save to Firestore
         _progress(job_id, 95, "Saving report...")
@@ -158,27 +159,52 @@ def _progress(job_id: str, pct: int, label: str):
     logger.debug("job_progress", job_id=job_id, pct=pct, label=label)
 
 
-def _build_full_readme(narrative: str, df, filename: str) -> str:
+def _df_to_markdown(df) -> str:
+    """Robust custom markdown table generator without needing tabulate."""
+    if df.empty:
+        return "No data available."
+    
+    # Handle Series
+    if isinstance(df, pd.Series):
+        df = df.to_frame()
+
+    # Get headers
+    cols = [""] + list(df.columns) if df.index.name is None else [df.index.name or "Index"] + list(df.columns)
+    header = "| " + " | ".join(str(c).replace("|", "-").strip() for c in cols) + " |"
+    separator = "|" + "|".join(["---"] * len(cols)) + "|"
+    
+    # Get rows
+    rows = []
+    for idx, row in df.iterrows():
+        row_vals = [str(idx)] + [str(v).replace("\n", " ").replace("|", "-").strip() for v in row.values]
+        # truncate very long strings to prevent breaking layout
+        row_vals = [v[:50] + "..." if len(v) > 50 else v for v in row_vals]
+        rows.append("| " + " | ".join(row_vals) + " |")
+        
+    return "\n".join([header, separator] + rows)
+
+
+def _build_full_readme(narrative: str, df, filename: str, anomaly_data: dict = None) -> str:
     """Combine LLM narrative + stats table into final markdown."""
-    import pandas as pd
     summary = df.describe(include="all").transpose()
     missing = df.isnull().sum()
     missing_df = missing[missing > 0].rename("Missing Count")
 
     md = f"# Analysis Report — `{filename}`\n\n"
     md += narrative + "\n\n"
+    
+    if anomaly_data and "top_anomalies" in anomaly_data and anomaly_data["top_anomalies"]:
+        md += "---\n\n## 🚨 Top Anomalies Detected\n\n"
+        md += f"Isolation Forest detected **{anomaly_data['anomaly_count']}** anomalies. Here are the most extreme cases:\n\n"
+        top_anom_df = pd.DataFrame(anomaly_data["top_anomalies"])
+        md += _df_to_markdown(top_anom_df) + "\n\n"
+
     md += "---\n\n## 📊 Detailed Statistics\n\n"
     md += "### Summary Statistics\n"
-    try:
-        md += summary.to_markdown(tablefmt="github") + "\n\n"
-    except Exception:
-        md += summary.to_string() + "\n\n"
+    md += _df_to_markdown(summary) + "\n\n"
 
     if not missing_df.empty:
         md += "### Missing Values\n"
-        try:
-            md += missing_df.to_markdown(tablefmt="github") + "\n\n"
-        except Exception:
-            md += missing_df.to_string() + "\n\n"
+        md += _df_to_markdown(missing_df) + "\n\n"
 
     return md
