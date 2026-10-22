@@ -55,29 +55,41 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── Upload Zone ──────────────────────────────────────────────────────────────
+let _selectedFile = null;
+
 function initUploadZone() {
   const zone = document.getElementById('upload-zone');
   const fileInput = document.getElementById('file-input');
+  const removeBtn = document.getElementById('remove-file-btn');
   if (!zone || !fileInput) return;
 
-  zone.addEventListener('click', () => fileInput.click());
+  zone.addEventListener('click', (e) => {
+    // Don't open file dialog if the remove button was clicked
+    if (removeBtn && removeBtn.contains(e.target)) return;
+    fileInput.click();
+  });
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', e => {
     e.preventDefault();
     zone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) _previewFile(e.dataTransfer.files[0]);
   });
   fileInput.addEventListener('change', () => {
-    if (fileInput.files.length) handleFile(fileInput.files[0]);
+    if (fileInput.files.length) _previewFile(fileInput.files[0]);
     fileInput.value = '';
   });
+
+  // Remove file button
+  if (removeBtn) {
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _clearPreview();
+    });
+  }
 }
 
-const ALLOWED_EXTS = ['csv'];
-const MAX_SIZE_MB = 50;
-
-async function handleFile(file) {
+function _previewFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (!ALLOWED_EXTS.includes(ext)) {
     toast('error', 'Unsupported format', `Allowed: ${ALLOWED_EXTS.join(', ')}`);
@@ -88,11 +100,54 @@ async function handleFile(file) {
     return;
   }
 
+  _selectedFile = file;
+
+  // Show preview, hide upload prompt elements
+  const preview = document.getElementById('file-preview');
+  const title = document.getElementById('upload-title');
+  const sub = document.getElementById('upload-sub');
+  const icon = document.getElementById('upload-icon');
+  const nameEl = document.getElementById('preview-name');
+  const sizeEl = document.getElementById('preview-size');
+
+  if (nameEl) nameEl.textContent = file.name;
+  if (sizeEl) {
+    const mb = (file.size / 1024 / 1024).toFixed(2);
+    sizeEl.textContent = mb >= 1 ? `${mb} MB` : `${Math.round(file.size / 1024)} KB`;
+  }
+  if (preview) preview.classList.remove('hidden');
+  if (title) title.style.opacity = '0.4';
+  if (sub) sub.style.opacity = '0.4';
+  if (icon) icon.style.opacity = '0.4';
+
+  // Automatically submit after a short delay for snappy UX
+  setTimeout(() => handleFile(_selectedFile), 300);
+}
+
+function _clearPreview() {
+  _selectedFile = null;
+  const preview = document.getElementById('file-preview');
+  const title = document.getElementById('upload-title');
+  const sub = document.getElementById('upload-sub');
+  const icon = document.getElementById('upload-icon');
+  if (preview) preview.classList.add('hidden');
+  if (title) title.style.opacity = '';
+  if (sub) sub.style.opacity = '';
+  if (icon) icon.style.opacity = '';
+}
+
+const ALLOWED_EXTS = ['csv'];
+const MAX_SIZE_MB = 50;
+
+async function handleFile(file) {
+  const enableCleaning = document.getElementById('clean-toggle')?.checked || false;
+
   setSection('progress');
   resetProgress();
 
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('enable_cleaning', String(enableCleaning));
 
   try {
     const res = await fetch('/submit', { method: 'POST', body: formData });
@@ -100,12 +155,17 @@ async function handleFile(file) {
     if (!res.ok || data.error) throw new Error(data.error || 'Upload failed');
 
     currentJobId = data.job_id;
-    window.currentJobId = currentJobId; // expose globally for ChartsModule
-    toast('info', 'Analysis started', 'Your file is being processed...');
+    window.currentJobId = currentJobId;
+    if (enableCleaning) {
+      toast('info', '✨ Auto-cleaning enabled', 'Data will be cleaned before analysis...');
+    } else {
+      toast('info', 'Analysis started', 'Your file is being processed...');
+    }
     startPolling(currentJobId);
   } catch (err) {
     toast('error', 'Upload failed', err.message);
     setSection('hero');
+    _clearPreview();
   }
 }
 

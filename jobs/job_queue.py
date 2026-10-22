@@ -22,12 +22,17 @@ import pandas as pd
 import structlog
 
 from services.analysis import (
-    read_dataset, get_column_info, detect_outliers_iqr,
-    detect_anomalies_ml, perform_clustering, build_analysis_context,
+    read_dataset,
+    get_column_info,
+    detect_outliers_iqr,
+    detect_anomalies_ml,
+    perform_clustering,
+    build_analysis_context,
     json_serializer,
 )
 from services.visualizations import generate_smart_charts
 from services.llm import generate_story
+from services.cleaning import auto_clean
 from models.db import create_job, update_job_status, save_report
 
 logger = structlog.get_logger()
@@ -52,6 +57,7 @@ def _get_redis():
 
     try:
         from upstash_redis import Redis
+
         _redis_client = Redis(url=url, token=token)
         logger.info("upstash_redis_connected")
         return _redis_client
@@ -64,21 +70,30 @@ def _get_redis():
 # JOB SUBMISSION
 # ─────────────────────────────────────────────────────────────────────────────
 
-def submit_job(file_path: str, filename: str, file_ext: str) -> str:
+
+def submit_job(
+    file_path: str,
+    filename: str,
+    file_ext: str,
+    enable_cleaning: bool = False,
+) -> str:
     """
     Submit a new analysis job. Returns job_id immediately.
     Processing runs in a background thread.
+
+    Args:
+        enable_cleaning: If True, auto-clean the dataframe before analysis.
     """
     job_id = str(uuid.uuid4())
     create_job(job_id, filename, file_ext)
 
     thread = threading.Thread(
         target=_run_analysis_job,
-        args=(job_id, file_path, filename, file_ext),
+        args=(job_id, file_path, filename, file_ext, enable_cleaning),
         daemon=True,
     )
     thread.start()
-    logger.info("job_submitted", job_id=job_id, filename=filename)
+    logger.info("job_submitted", job_id=job_id, filename=filename, cleaning=enable_cleaning)
     return job_id
 
 
@@ -86,12 +101,26 @@ def submit_job(file_path: str, filename: str, file_ext: str) -> str:
 # JOB RUNNER (runs in background thread)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _run_analysis_job(job_id: str, file_path: str, filename: str, file_ext: str):
+
+def _run_analysis_job(
+    job_id: str,
+    file_path: str,
+    filename: str,
+    file_ext: str,
+    enable_cleaning: bool = False,
+):
     """Full analysis pipeline. Runs in a background thread."""
     try:
         # Stage 1: Read dataset
         _progress(job_id, 5, "Reading dataset...")
         df = read_dataset(file_path, file_ext)
+
+        # Stage 1b: Optional auto-cleaning
+        cleaning_report = {}
+        if enable_cleaning:
+            _progress(job_id, 12, "Auto-cleaning data...")
+            df, cleaning_report = auto_clean(df)
+            logger.info("cleaning_applied", job_id=job_id, actions=len(cleaning_report.get('actions', [])))
 
         # Stage 2: Column info
         _progress(job_id, 20, "Computing column statistics...")
@@ -109,9 +138,13 @@ def _run_analysis_job(job_id: str, file_path: str, filename: str, file_ext: str)
         _progress(job_id, 60, "Clustering data...")
         clustering = perform_clustering(df)
 
-        # Stage 6: Build context
+        # Stage 6: Build context (inject cleaning report for LLM narrative)
         _progress(job_id, 65, "Building analysis context...")
-        context = build_analysis_context(df, column_info, outliers, anomaly_data, clustering, filename)
+        context = build_analysis_context(
+            df, column_info, outliers, anomaly_data, clustering, filename
+        )
+        if cleaning_report:
+            context["cleaning_report"] = cleaning_report
 
         # Stage 7: Generate charts
         _progress(job_id, 75, "Generating interactive charts...")
@@ -123,6 +156,7 @@ def _run_analysis_job(job_id: str, file_path: str, filename: str, file_ext: str)
 
         # Build markdown report with stats table
         from services.analysis import json_serializer
+
         readme_full = _build_full_readme(readme, df, filename, anomaly_data)
 
         # Stage 9: Save to Firestore
@@ -138,7 +172,9 @@ def _run_analysis_job(job_id: str, file_path: str, filename: str, file_ext: str)
         share_token = save_report(job_id, report_data)
 
         # Done!
-        update_job_status(job_id, "done", progress=100, progress_label="Analysis complete!")
+        update_job_status(
+            job_id, "done", progress=100, progress_label="Analysis complete!"
+        )
         logger.info("job_completed", job_id=job_id, share_token=share_token)
 
     except Exception as e:
@@ -163,28 +199,36 @@ def _df_to_markdown(df) -> str:
     """Robust custom markdown table generator without needing tabulate."""
     if df.empty:
         return "No data available."
-    
+
     # Handle Series
     if isinstance(df, pd.Series):
         df = df.to_frame()
 
     # Get headers
-    cols = [""] + list(df.columns) if df.index.name is None else [df.index.name or "Index"] + list(df.columns)
+    cols = (
+        [""] + list(df.columns)
+        if df.index.name is None
+        else [df.index.name or "Index"] + list(df.columns)
+    )
     header = "| " + " | ".join(str(c).replace("|", "-").strip() for c in cols) + " |"
     separator = "|" + "|".join(["---"] * len(cols)) + "|"
-    
+
     # Get rows
     rows = []
     for idx, row in df.iterrows():
-        row_vals = [str(idx)] + [str(v).replace("\n", " ").replace("|", "-").strip() for v in row.values]
+        row_vals = [str(idx)] + [
+            str(v).replace("\n", " ").replace("|", "-").strip() for v in row.values
+        ]
         # truncate very long strings to prevent breaking layout
         row_vals = [v[:50] + "..." if len(v) > 50 else v for v in row_vals]
         rows.append("| " + " | ".join(row_vals) + " |")
-        
+
     return "\n".join([header, separator] + rows)
 
 
-def _build_full_readme(narrative: str, df, filename: str, anomaly_data: dict = None) -> str:
+def _build_full_readme(
+    narrative: str, df, filename: str, anomaly_data: dict = None
+) -> str:
     """Combine LLM narrative + stats table into final markdown."""
     summary = df.describe(include="all").transpose()
     missing = df.isnull().sum()
@@ -192,8 +236,12 @@ def _build_full_readme(narrative: str, df, filename: str, anomaly_data: dict = N
 
     md = f"# Analysis Report — `{filename}`\n\n"
     md += narrative + "\n\n"
-    
-    if anomaly_data and "top_anomalies" in anomaly_data and anomaly_data["top_anomalies"]:
+
+    if (
+        anomaly_data
+        and "top_anomalies" in anomaly_data
+        and anomaly_data["top_anomalies"]
+    ):
         md += "---\n\n## 🚨 Top Anomalies Detected\n\n"
         md += f"Isolation Forest detected **{anomaly_data['anomaly_count']}** anomalies. Here are the most extreme cases:\n\n"
         top_anom_df = pd.DataFrame(anomaly_data["top_anomalies"])

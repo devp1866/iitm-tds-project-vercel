@@ -8,7 +8,7 @@ import os
 import json
 import uuid
 import structlog
-from flask import Flask, render_template, request, jsonify, abort, send_from_directory
+from flask import Flask, render_template, request, jsonify, abort, send_from_directory, Response, stream_with_context
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -18,7 +18,7 @@ load_dotenv()
 
 from jobs.job_queue import submit_job
 from models.db import get_job, get_report_by_job, get_report_by_token
-from services.llm import chat_with_data, analyze_column
+from services.llm import chat_with_data, chat_with_data_stream, analyze_column
 from services.email_service import send_contact_email
 from services.visualizations import generate_column_charts
 from services.analysis import read_dataset, get_column_info, json_serializer
@@ -44,11 +44,13 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_FILE_SIZE_MB", 50)) * 1024
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
+# Use Upstash Redis for persistent rate limiting when configured; fall back to in-memory
+_redis_uri = os.getenv("UPSTASH_REDIS_URL")
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["200 per day", "60 per hour"],
-    storage_uri="memory://",
+    storage_uri=_redis_uri if _redis_uri else "memory://",
 )
 
 ALLOWED_EXTENSIONS = {"csv"}
@@ -146,10 +148,11 @@ def submit():
         logger.error("file_save_failed", error=str(e))
         return jsonify({"error": "Failed to save uploaded file."}), 500
 
-    # Submit async job
+    # Submit async job — pass enable_cleaning flag from form data
+    enable_cleaning = request.form.get("enable_cleaning", "false").lower() == "true"
     try:
-        submitted_job_id = submit_job(file_path, filename, ext)
-        logger.info("analysis_submitted", job_id=submitted_job_id, filename=filename)
+        submitted_job_id = submit_job(file_path, filename, ext, enable_cleaning=enable_cleaning)
+        logger.info("analysis_submitted", job_id=submitted_job_id, filename=filename, cleaning=enable_cleaning)
         return jsonify({"job_id": submitted_job_id}), 202
     except Exception as e:
         logger.error("job_submit_failed", error=str(e))
@@ -255,11 +258,55 @@ def chat():
     try:
         reply = chat_with_data(context, messages)
         return jsonify({"reply": reply})
-    except TimeoutError as e:
-        return jsonify({"error": str(e)}), 504
     except Exception as e:
         logger.error("chat_failed", error=str(e))
         return jsonify({"error": "Chat failed. Please try again."}), 500
+
+
+@app.route("/chat/stream", methods=["POST"])
+@limiter.limit("30 per hour")
+def chat_stream():
+    """
+    Streaming AI chat via Server-Sent Events (SSE).
+    Body: { "job_id": str, "messages": [{"role": "user"|"assistant", "content": str}] }
+    Client reads tokens as they arrive — ChatGPT-style.
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body."}), 400
+
+    job_id = data.get("job_id")
+    messages = data.get("messages", [])
+    if not job_id or not messages:
+        return jsonify({"error": "job_id and messages are required."}), 400
+
+    report = get_report_by_job(job_id)
+    if not report:
+        return jsonify({"error": "Analysis report not found."}), 404
+
+    try:
+        context = json.loads(report.get("summary_context", "{}"))
+    except Exception:
+        context = {}
+
+    def _generate():
+        try:
+            for token in chat_with_data_stream(context, messages):
+                # SSE format: data: <token>\n\n
+                yield f"data: {json.dumps({'token': token})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error("chat_stream_failed", error=str(e))
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        stream_with_context(_generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable nginx buffering
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -41,19 +41,49 @@
       <div id="upload-zone" class="upload-zone" role="button" aria-label="Upload dataset file" tabindex="0">
         <input type="file" id="file-input" class="hidden" accept=".csv">
 
-        <div class="upload-icon">
+        <div class="upload-icon" id="upload-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-sky)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
             <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
           </svg>
         </div>
-        <div class="upload-title">Drop your dataset here</div>
-        <div class="upload-sub">or click to browse your files</div>
+        <div class="upload-title" id="upload-title">Drop your dataset here</div>
+        <div class="upload-sub" id="upload-sub">or click to browse your files</div>
+
+        <!-- File preview (shown after file is picked) -->
+        <div id="file-preview" class="file-preview hidden">
+          <div class="file-preview-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mint)" stroke-width="2" stroke-linecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="file-preview-info">
+            <span id="preview-name" class="file-preview-name"></span>
+            <span id="preview-size" class="file-preview-size"></span>
+          </div>
+          <button id="remove-file-btn" class="remove-file-btn" title="Remove file" aria-label="Remove file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
 
         <div class="file-badges">
           <span class="badge badge-sky">CSV</span>
           <span class="badge badge-slate">Max 50MB</span>
         </div>
+      </div>
+
+      <!-- ✨ Optional Data Cleaning Toggle -->
+      <div class="clean-toggle-row" id="clean-toggle-row">
+        <label class="clean-toggle-label" for="clean-toggle">
+          <div class="toggle-switch">
+            <input type="checkbox" id="clean-toggle" role="switch">
+            <span class="toggle-slider"></span>
+          </div>
+          <div class="toggle-text">
+            <span class="toggle-title">✨ Auto-clean data before analysis</span>
+            <span class="toggle-desc">Drops near-empty columns, fills missing values with median, parses dates</span>
+          </div>
+        </label>
       </div>
 
       <!-- Feature pills -->

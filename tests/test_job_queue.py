@@ -43,7 +43,8 @@ def test_run_analysis_job_success(
     mock_story.return_value = "This is a great dataset."
     mock_save.return_value = "fake_share_token"
 
-    _run_analysis_job("job_123", "fake.csv", "fake.csv", "csv")
+    _run_analysis_job("job_123", "fake.csv", "fake.csv", "csv", False)
+
 
     # Assertions
     mock_read.assert_called_once_with("fake.csv", "csv")

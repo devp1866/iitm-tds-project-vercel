@@ -81,33 +81,87 @@
     _appendUserBubble(text);
     _isLoading = true;
 
-    const typingEl = _showTyping();
+    // Create the assistant bubble immediately for streaming into
+    const assistantBubble = _createStreamingBubble();
 
     try {
-      const res = await fetch('/chat', {
+      const res = await fetch('/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ job_id: _jobId, messages: _messages }),
       });
 
-      const data = await res.json();
-      typingEl.remove();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error ${res.status}`);
+      }
 
-      if (!res.ok || data.error) throw new Error(data.error || 'Chat failed');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullReply = '';
+      let buffer = '';
 
-      const reply = data.reply || '';
-      _messages.push({ role: 'assistant', content: reply });
-      _appendAssistantBubble(reply);
+      // Stream tokens via SSE
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      // Save to sessionStorage
-      try { sessionStorage.setItem(`chat_${_jobId}`, JSON.stringify(_messages)); } catch {}
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.error) throw new Error(parsed.error);
+            if (parsed.token) {
+              fullReply += parsed.token;
+              // Update bubble with markdown-rendered content as tokens arrive
+              try {
+                assistantBubble.innerHTML = marked.parse(fullReply);
+              } catch {
+                assistantBubble.textContent = fullReply;
+              }
+              _scrollToBottom(document.getElementById('chat-messages'));
+            }
+          } catch (parseErr) {
+            if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
+          }
+        }
+      }
+
+      // Save completed message to history
+      if (fullReply) {
+        _messages.push({ role: 'assistant', content: fullReply });
+        try { sessionStorage.setItem(`chat_${_jobId}`, JSON.stringify(_messages)); } catch {}
+      }
+
+      // Update badge if drawer is closed
+      const drawer = document.getElementById('chat-drawer');
+      if (drawer && !drawer.classList.contains('open')) _updateFabBadge();
 
     } catch (err) {
-      typingEl.remove();
+      assistantBubble.remove();
       _appendErrorBubble(err.message);
     } finally {
       _isLoading = false;
     }
+  }
+
+  function _createStreamingBubble() {
+    const container = document.getElementById('chat-messages');
+    if (!container) return document.createElement('div');
+    const el = document.createElement('div');
+    el.className = 'msg-bubble msg-assistant markdown-body streaming';
+    // Blinking cursor while streaming
+    el.innerHTML = '<span class="stream-cursor"></span>';
+    container.appendChild(el);
+    _scrollToBottom(container);
+    return el;
   }
 
   function _appendUserBubble(text) {

@@ -1,55 +1,29 @@
 """
-services/llm.py
-All LLM interactions for Autolysis v2.
+services/llm.py — Autolysis v2
+All LLM interactions powered by Google Gemini 2.0 Flash via the official google-genai SDK v2.x.
 - Analysis story generation
-- Conversational AI chat (with REAL data values in context)
+- Streaming conversational chat (Server-Sent Events)
 - Column deep-dive analysis
 """
 
 import os
 import json
-import requests
 import structlog
+from google import genai
+from google.genai import types
 
 logger = structlog.get_logger()
 
-API_URL = "https://aipipe.org/openrouter/v1/chat/completions"
-MODEL = "openai/gpt-4o-mini"
+# Using gemini-2.0-flash: fast, free-tier, 1M context, best for data analysis
+MODEL = "gemini-2.0-flash"
 
 
-def _get_token() -> str:
-    token = os.getenv("AIPROXY_TOKEN")
-    if not token:
-        raise EnvironmentError("AIPROXY_TOKEN environment variable is not set.")
-    return token
-
-
-def _call_llm(messages: list, temperature: float = 0.7, max_tokens: int = 2000) -> str:
-    """Make a chat completions API call. Returns the assistant's message text."""
-    token = _get_token()
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "X-Title": "Autolysis",
-    }
-    payload = {
-        "model": MODEL,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }
-    try:
-        resp = requests.post(API_URL, headers=headers, json=payload, timeout=90)
-        resp.raise_for_status()
-        result = resp.json()
-        return result["choices"][0]["message"]["content"]
-    except requests.exceptions.Timeout:
-        raise TimeoutError("LLM API request timed out. Please try again.")
-    except requests.exceptions.HTTPError as e:
-        status = e.response.status_code if e.response else "unknown"
-        raise RuntimeError(f"LLM API HTTP error {status}: {e}") from e
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected LLM API response format: {e}") from e
+def _get_client() -> genai.Client:
+    """Lazy-initialize Gemini client using GOOGLE_API_KEY."""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise EnvironmentError("GOOGLE_API_KEY environment variable is not set.")
+    return genai.Client(api_key=api_key)
 
 
 def _fmt_num(v):
@@ -67,9 +41,8 @@ def _fmt_num(v):
 
 def _build_system_context(context: dict) -> str:
     """
-    Convert analysis context into a rich system prompt that contains
-    ACTUAL computed values so the AI can answer specific questions
-    (e.g. 'total sales', 'average score') directly.
+    Convert analysis context into a rich system prompt containing
+    ACTUAL computed values so the AI can answer specific questions directly.
     """
     filename = context.get("filename", "dataset")
     shape = context.get("shape", {})
@@ -81,6 +54,7 @@ def _build_system_context(context: dict) -> str:
     numeric_agg = context.get("numeric_aggregates", {})
     cat_agg = context.get("cat_aggregates", {})
     top_corr = context.get("top_correlations", [])
+    cleaning_report = context.get("cleaning_report", {})
 
     lines = [
         f"You are an expert data analyst. The user uploaded a dataset called '{filename}'.",
@@ -92,37 +66,38 @@ def _build_system_context(context: dict) -> str:
         "",
     ]
 
-    # Numeric aggregates — the most important section for answering specific questions
+    if cleaning_report and cleaning_report.get("actions"):
+        lines.append("--- DATA CLEANING APPLIED ---")
+        for action in cleaning_report["actions"]:
+            lines.append(f"  • {action}")
+        lines.append("")
+
     if numeric_agg:
-        lines.append("--- NUMERIC COLUMN STATISTICS (use these for specific questions) ---")
+        lines.append("--- NUMERIC COLUMN STATISTICS ---")
         for col, stats in numeric_agg.items():
             parts = [
-                f"  sum={_fmt_num(stats.get('sum'))}",
+                f"sum={_fmt_num(stats.get('sum'))}",
                 f"mean={_fmt_num(stats.get('mean'))}",
                 f"median={_fmt_num(stats.get('median'))}",
                 f"min={_fmt_num(stats.get('min'))}",
                 f"max={_fmt_num(stats.get('max'))}",
                 f"std={_fmt_num(stats.get('std'))}",
-                f"count={stats.get('count', 'N/A')}",
                 f"nulls={stats.get('null_count', 0)}",
             ]
             lines.append(f"  [{col}]: {', '.join(parts)}")
         lines.append("")
 
-    # Categorical columns
     if cat_agg:
         lines.append("--- CATEGORICAL COLUMN STATISTICS ---")
         for col, stats in cat_agg.items():
             top = stats.get("top_values", {})
             top_str = ", ".join(f"'{k}':{v}" for k, v in list(top.items())[:5])
             lines.append(
-                f"  [{col}]: {stats.get('unique_count')} unique values, "
-                f"most common: {top_str}, "
-                f"mode='{stats.get('mode')}', nulls={stats.get('null_count', 0)}"
+                f"  [{col}]: {stats.get('unique_count')} unique, "
+                f"mode='{stats.get('mode')}', top: {top_str}, nulls={stats.get('null_count', 0)}"
             )
         lines.append("")
 
-    # Correlations
     if top_corr:
         lines.append("--- TOP CORRELATIONS ---")
         for pair in top_corr[:8]:
@@ -131,13 +106,11 @@ def _build_system_context(context: dict) -> str:
             )
         lines.append("")
 
-    # Sample data
     if sample:
         lines.append(f"--- SAMPLE ROWS (first {len(sample)}) ---")
         lines.append(json.dumps(sample, default=str))
         lines.append("")
 
-    # Anomaly / outliers
     if outlier_cols:
         lines.append(f"IQR outliers detected in: {', '.join(outlier_cols)}")
     if anomaly.get("anomaly_count"):
@@ -145,21 +118,41 @@ def _build_system_context(context: dict) -> str:
             f"Isolation Forest found {anomaly['anomaly_count']} anomalies "
             f"({anomaly.get('anomaly_pct', 0)}% of rows)."
         )
-
-    # Clustering
     if isinstance(clustering, dict) and "k" in clustering:
         lines.append(
             f"KMeans clustering: {clustering['k']} clusters, "
             f"sizes: {clustering.get('cluster_sizes', {})}"
         )
 
-    lines.append("")
-    lines.append(
+    lines.extend([
+        "",
         "Rules: Answer ONLY from the statistics above. Give exact numbers when asked. "
-        "Be concise and direct. Format in markdown. Never say the data is inaccessible."
-    )
+        "Be concise and direct. Format in markdown. Never say the data is inaccessible.",
+    ])
 
     return "\n".join(lines)
+
+
+def _build_chat_contents(system_prompt: str, messages: list) -> list:
+    """Build contents list for multi-turn chat (google-genai v2.x format)."""
+    contents = []
+    # Inject system context as first user + model turn so it's part of history
+    contents.append(types.Content(
+        role="user",
+        parts=[types.Part(text=f"[SYSTEM CONTEXT]\n{system_prompt}\n[/SYSTEM CONTEXT]\n\nAcknowledge you have the context.")]
+    ))
+    contents.append(types.Content(
+        role="model",
+        parts=[types.Part(text="Understood. I have full access to the dataset statistics and will answer based on those exact values.")]
+    ))
+    # Add conversation history (last 10 turns)
+    for msg in messages[-10:]:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append(types.Content(
+            role=role,
+            parts=[types.Part(text=msg["content"])]
+        ))
+    return contents
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -171,6 +164,7 @@ def generate_story(context: dict) -> str:
     Generate a comprehensive, structured analysis narrative from the context dict.
     Returns a Markdown string.
     """
+    client = _get_client()
     filename = context.get("filename", "dataset")
     cols = context.get("columns", [])
     sample = context.get("sample_rows", [])
@@ -181,8 +175,8 @@ def generate_story(context: dict) -> str:
     clustering = context.get("clustering", {})
     top_corr = context.get("top_correlations", [])
     shape = context.get("shape", {})
+    cleaning_report = context.get("cleaning_report", {})
 
-    # Build a rich stats block for the story prompt
     stats_block = ""
     if numeric_agg:
         rows = []
@@ -197,11 +191,19 @@ def generate_story(context: dict) -> str:
             + "\n".join(rows)
         )
 
+    cleaning_note = ""
+    if cleaning_report.get("actions"):
+        cleaning_note = (
+            f"\n**Auto-cleaning applied:** {len(cleaning_report['actions'])} operations "
+            f"({', '.join(cleaning_report['actions'][:3])})\n"
+        )
+
     prompt = (
         f"You are a senior data analyst writing a professional executive report.\n\n"
         f"**Dataset:** `{filename}` — {shape.get('rows','?')} rows × {shape.get('cols','?')} columns\n"
         f"**Columns:** {cols}\n"
-        f"**Sample rows:** {json.dumps(sample[:3], default=str)}\n\n"
+        f"**Sample rows:** {json.dumps(sample[:3], default=str)}\n"
+        f"{cleaning_note}\n"
         f"**Computed Statistics:**\n{stats_block}\n\n"
         f"**Categorical columns:** {json.dumps({k: v['top_values'] for k, v in cat_agg.items()}, default=str)}\n"
         f"**Top correlations:** {json.dumps(top_corr[:8], default=str)}\n"
@@ -219,36 +221,65 @@ def generate_story(context: dict) -> str:
         "## 7. Cluster Analysis\n"
         "## 8. Recommendations\n\n"
         "Rules:\n"
-        "- Use EXACT numbers from the statistics provided above.\n"
+        "- Use EXACT numbers from the statistics above.\n"
         "- Use markdown tables where helpful.\n"
         "- Be specific and data-driven, no vague statements.\n"
         "- Do not invent data or guess column semantics beyond what's visible.\n"
     )
 
-    messages = [{"role": "user", "content": prompt}]
-    logger.info("generating_story", filename=filename)
-    return _call_llm(messages, temperature=0.5, max_tokens=3000)
+    logger.info("generating_story", filename=filename, model=MODEL)
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.5,
+            max_output_tokens=3000,
+        ),
+    )
+    return response.text or ""
 
 
 def chat_with_data(context: dict, messages: list) -> str:
     """
-    Conversational AI chat grounded in the full analysis context with real computed values.
-
-    Args:
-        context: The analysis context dict (from Firestore/in-memory store)
-        messages: List of {"role": "user"|"assistant", "content": str}
-
-    Returns:
-        Assistant's reply string (Markdown)
+    Conversational AI chat grounded in the full analysis context.
+    Non-streaming version (for /chat endpoint).
     """
+    client = _get_client()
     system_prompt = _build_system_context(context)
-
-    llm_messages = [{"role": "system", "content": system_prompt}]
-    # Include last 12 messages for multi-turn context
-    llm_messages.extend(messages[-12:])
+    contents = _build_chat_contents(system_prompt, messages)
 
     logger.info("chat_request", message_count=len(messages))
-    return _call_llm(llm_messages, temperature=0.5, max_tokens=1200)
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            temperature=0.5,
+            max_output_tokens=1200,
+        ),
+    )
+    return response.text or ""
+
+
+def chat_with_data_stream(context: dict, messages: list):
+    """
+    Streaming chat. Yields text tokens as they arrive (for SSE /chat/stream endpoint).
+    Usage: for token in chat_with_data_stream(context, messages): yield token
+    """
+    client = _get_client()
+    system_prompt = _build_system_context(context)
+    contents = _build_chat_contents(system_prompt, messages)
+
+    logger.info("chat_stream_request", message_count=len(messages))
+    for chunk in client.models.generate_content_stream(
+        model=MODEL,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            temperature=0.5,
+            max_output_tokens=1200,
+        ),
+    ):
+        if chunk.text:
+            yield chunk.text
 
 
 def analyze_column(context: dict, column_name: str) -> str:
@@ -256,6 +287,7 @@ def analyze_column(context: dict, column_name: str) -> str:
     Generate a deep-dive analysis for a single column using actual computed stats.
     Returns a Markdown string.
     """
+    client = _get_client()
     col_info = context.get("column_info", {}).get(column_name, {})
     outlier_info = context.get("outliers", {}).get(column_name)
     num_stats = context.get("numeric_aggregates", {}).get(column_name)
@@ -298,6 +330,13 @@ def analyze_column(context: dict, column_name: str) -> str:
         "Use EXACT numbers. Be direct and analytical. 150–250 words. Markdown format."
     )
 
-    messages = [{"role": "user", "content": prompt}]
     logger.info("column_analysis", column=column_name)
-    return _call_llm(messages, temperature=0.4, max_tokens=700)
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.4,
+            max_output_tokens=700,
+        ),
+    )
+    return response.text or ""

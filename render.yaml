@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: autolysis
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore  # closest to India
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false   # Set manually in Render dashboard
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FIREBASE_CREDENTIALS_BASE64
+        sync: false
+      - key: UPSTASH_REDIS_URL
+        sync: false
+      - key: UPSTASH_REDIS_TOKEN
+        sync: false
+      - key: WEB3FORMS_KEY
+        sync: false
+      - key: MAX_FILE_SIZE_MB
+        value: "50"
+    healthCheckPath: /health

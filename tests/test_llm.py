@@ -1,17 +1,24 @@
 import os
 import pytest
 from unittest.mock import patch, MagicMock
-from services.llm import _get_token, _call_llm, _fmt_num, chat_with_data
+from services.llm import _get_client, _fmt_num, chat_with_data, chat_with_data_stream
 
 
-def test_get_token():
-    """Ensure token retrieval works or raises appropriate error."""
-    with patch.dict(os.environ, {"AIPROXY_TOKEN": "test_token"}):
-        assert _get_token() == "test_token"
-        
+def test_get_client_missing_key():
+    """Ensure client creation raises EnvironmentError when key missing."""
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(EnvironmentError):
-            _get_token()
+        with pytest.raises(EnvironmentError, match="GOOGLE_API_KEY"):
+            _get_client()
+
+
+def test_get_client_with_key():
+    """Ensure _get_client returns a client object when GOOGLE_API_KEY is set."""
+    with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-key-for-test"}):
+        with patch("services.llm.genai.Client") as mock_client_cls:
+            mock_client_cls.return_value = MagicMock()
+            client = _get_client()
+            mock_client_cls.assert_called_once_with(api_key="fake-key-for-test")
+            assert client is not None
 
 
 def test_fmt_num():
@@ -23,33 +30,55 @@ def test_fmt_num():
     assert _fmt_num(0.000123) == "0.000123"
 
 
-@patch("services.llm.requests.post")
-def test_call_llm_success(mock_post):
-    """Test successful LLM call parsing."""
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {
-        "choices": [{"message": {"content": "Hello, data!"}}]
+def test_chat_with_data_calls_gemini():
+    """Test chat_with_data calls generate_content and returns text."""
+    mock_response = MagicMock()
+    mock_response.text = "This is a Gemini response"
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = mock_response
+
+    context = {
+        "filename": "test.csv",
+        "shape": {"rows": 100, "cols": 5},
+        "columns": ["a", "b", "c"],
+        "numeric_aggregates": {},
+        "cat_aggregates": {},
     }
-    mock_post.return_value = mock_resp
+    messages = [{"role": "user", "content": "What is this dataset?"}]
 
-    with patch.dict(os.environ, {"AIPROXY_TOKEN": "test_token"}):
-        result = _call_llm([{"role": "user", "content": "Hi"}])
-        assert result == "Hello, data!"
-        mock_post.assert_called_once()
+    with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-key-for-test"}):
+        with patch("services.llm._get_client", return_value=mock_client):
+            response = chat_with_data(context, messages)
+            assert response == "This is a Gemini response"
+            mock_client.models.generate_content.assert_called_once()
+            call_kwargs = mock_client.models.generate_content.call_args[1]
+            assert call_kwargs["model"] == "gemini-2.0-flash"
 
 
-@patch("services.llm._call_llm")
-def test_chat_with_data(mock_call):
-    """Test public chat function."""
-    mock_call.return_value = "This is a chat response"
-    context = {"filename": "test.csv"}
-    messages = [{"role": "user", "content": "What is this?"}]
-    
-    with patch.dict(os.environ, {"AIPROXY_TOKEN": "test_token"}):
-        response = chat_with_data(context, messages)
-        assert response == "This is a chat response"
-        # Verify call arguments
-        call_msgs = mock_call.call_args[0][0]
-        assert call_msgs[0]["role"] == "system"
-        assert "test.csv" in call_msgs[0]["content"]
-        assert call_msgs[1]["content"] == "What is this?"
+def test_chat_with_data_stream():
+    """Test streaming chat yields tokens from generate_content_stream."""
+    def _fake_stream(*args, **kwargs):
+        chunks = []
+        for text in ["Hello", " world", "!"]:
+            chunk = MagicMock()
+            chunk.text = text
+            chunks.append(chunk)
+        return iter(chunks)
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content_stream.side_effect = _fake_stream
+
+    context = {
+        "filename": "test.csv",
+        "columns": [],
+        "numeric_aggregates": {},
+        "cat_aggregates": {},
+    }
+    messages = [{"role": "user", "content": "Hi"}]
+
+    with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-key-for-test"}):
+        with patch("services.llm._get_client", return_value=mock_client):
+            tokens = list(chat_with_data_stream(context, messages))
+            assert tokens == ["Hello", " world", "!"]
+            mock_client.models.generate_content_stream.assert_called_once()
